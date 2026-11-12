@@ -2,7 +2,7 @@ const app = process.env.POMO_APP ?? "src-tauri/target/debug/pomo";
 
 export const config = {
   runner: "local",
-  specs: ["./smoke.e2e.ts"],
+  specs: ["./*.e2e.ts"],
   maxInstances: 1,
   framework: "mocha",
   reporters: ["spec"],
