@@ -1,7 +1,7 @@
 use crate::schedule::Schedule;
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::{self, OpenOptions},
+    fs::{self, File, OpenOptions},
     io::Write,
     path::PathBuf,
     sync::Mutex,
@@ -12,6 +12,8 @@ use tauri::{AppHandle, Emitter};
 pub struct Persisted {
     pub app: serde_json::Value,
     pub schedule: Option<Schedule>,
+    #[serde(default)]
+    pub revision: u64,
 }
 pub struct StateStore {
     pub latest: Mutex<Persisted>,
@@ -26,6 +28,7 @@ impl StateStore {
             .unwrap_or(Persisted {
                 app: serde_json::Value::Null,
                 schedule: None,
+                revision: 0,
             });
         Self {
             latest: Mutex::new(latest),
@@ -48,24 +51,27 @@ impl StateStore {
         app: AppHandle,
         state: serde_json::Value,
         schedule: Option<Schedule>,
-    ) -> Result<(), String> {
+    ) -> Result<u64, String> {
+        // 版番号の採番からファイルの置き換えまでを 1 つのロックで行い、保存の順序を固定する。
+        let mut latest = self.latest.lock().map_err(|e| e.to_string())?;
         let persisted = Persisted {
             app: state,
             schedule,
+            revision: latest.revision + 1,
         };
         fs::create_dir_all(&self.dir).map_err(|e| e.to_string())?;
         let temp = self.dir.join("state.json.tmp");
-        fs::write(
-            &temp,
-            serde_json::to_vec(&persisted).map_err(|e| e.to_string())?,
-        )
-        .map_err(|e| e.to_string())?;
-        fs::rename(temp, self.dir.join("state.json")).map_err(|e| e.to_string())?;
-        *self.latest.lock().map_err(|e| e.to_string())? = persisted.clone();
-        app.emit("state-changed", &persisted.app)
+        let bytes = serde_json::to_vec(&persisted).map_err(|e| e.to_string())?;
+        File::create(&temp)
+            .and_then(|mut f| f.write_all(&bytes).and_then(|_| f.sync_all()))
             .map_err(|e| e.to_string())?;
-        crate::set_schedule(&app, persisted.schedule);
-        Ok(())
+        fs::rename(temp, self.dir.join("state.json")).map_err(|e| e.to_string())?;
+        *latest = persisted.clone();
+        drop(latest);
+        crate::set_schedule(&app, persisted.schedule.clone());
+        app.emit("state-changed", &persisted)
+            .map_err(|e| e.to_string())?;
+        Ok(persisted.revision)
     }
 }
 
@@ -82,7 +88,7 @@ pub fn save_state(
     store: tauri::State<'_, StateStore>,
     state: serde_json::Value,
     schedule: Option<Schedule>,
-) -> Result<(), String> {
+) -> Result<u64, String> {
     store.save(app, state, schedule)
 }
 #[tauri::command]

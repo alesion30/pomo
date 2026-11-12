@@ -22,6 +22,10 @@ fn set_title<R: Runtime>(app: &tauri::AppHandle<R>, title: String) {
 }
 
 fn set_schedule<R: Runtime>(app: &tauri::AppHandle<R>, schedule: Option<Schedule>) {
+    set_title(
+        app,
+        schedule::format_title(schedule.as_ref(), chrono_millis()),
+    );
     if let Some(active) = app.try_state::<ActiveSchedule>() {
         *active.0.lock().unwrap() = schedule;
     }
@@ -138,9 +142,15 @@ pub fn run() {
                     if due.should_fire(schedule.as_ref(), now) {
                         let _ = handle.emit("phase-due", ());
                     }
-                    std::thread::sleep(std::time::Duration::from_millis(
-                        1000 - (now.rem_euclid(1000) as u64),
-                    ));
+                    // 予定時刻と同じ秒の位相の少し後に起きる。位相がずれると、表示の秒が飛んだり重なったりする。
+                    let phase = schedule
+                        .as_ref()
+                        .map_or(0, |s| s.planned_end.rem_euclid(1000));
+                    let wait = match (phase + 5 - now).rem_euclid(1000) {
+                        0 => 1000,
+                        ms => ms,
+                    };
+                    std::thread::sleep(std::time::Duration::from_millis(wait as u64));
                 }
             });
             Ok(())

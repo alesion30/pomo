@@ -44,12 +44,12 @@ pub fn format_title(schedule: Option<&Schedule>, now: i64) -> String {
     let Some(s) = schedule else {
         return "pomo".into();
     };
-    let delta = if now >= s.planned_end {
-        now - s.planned_end
+    // 残りは切り上げ、超過は切り捨てにして、ポップオーバーの表示とそろえる。
+    let seconds = if now >= s.planned_end {
+        (now - s.planned_end) / 1000
     } else {
-        s.planned_end - now
+        (s.planned_end - now + 999) / 1000
     };
-    let seconds = delta / 1000;
     let time = format!("{:02}:{:02}", seconds / 60, seconds % 60);
     match s.kind {
         ScheduleKind::Focus => {
@@ -126,6 +126,14 @@ mod tests {
             format_title(Some(&sample(ScheduleKind::Focus)), 244_000),
             "+03:04 作業"
         );
+    }
+    #[test]
+    fn remaining_rounds_up_like_the_popover() {
+        let s = sample(ScheduleKind::Focus);
+        assert_eq!(format_title(Some(&s), 0), "01:00 作業");
+        assert_eq!(format_title(Some(&s), 500), "01:00 作業");
+        assert_eq!(format_title(Some(&s), 1_000), "00:59 作業");
+        assert_eq!(format_title(Some(&s), 60_000), "+00:00 作業");
     }
     #[test]
     fn due_fires_once_and_rearms() {

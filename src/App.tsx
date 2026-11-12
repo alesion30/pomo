@@ -16,7 +16,11 @@ type Schedule = {
   planned_end: number;
 };
 
-type Persisted = { app: AppState; schedule: Schedule | null };
+type Persisted = {
+  app: AppState | null;
+  schedule: Schedule | null;
+  revision: number;
+};
 function makeSchedule(state: AppState): Schedule | null {
   const timer = state.timer;
   if (timer.phase === "idle") return null;
@@ -38,15 +42,27 @@ function App() {
   }, []);
   const [now, setNow] = useState(Date.now());
   const [scale, setScale] = useState(1);
+  // 保存は順番に流し、保存待ちの間と古い版の状態は取り込まない。
+  // 取り込むと、遅れて届いた load_state やイベントが手元の新しい状態を巻き戻す。
+  const revision = useRef(0);
+  const pending = useRef(0);
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  const accept = useCallback(
+    (saved: Persisted) => {
+      if (pending.current > 0 || saved.revision < revision.current) return;
+      revision.current = saved.revision;
+      if (saved.app) setAppState(saved.app);
+    },
+    [setAppState],
+  );
   const refresh = useCallback(async () => {
-    const saved = await invoke<Persisted>("load_state");
-    if (saved.app) setAppState(saved.app);
-  }, [setAppState]);
+    accept(await invoke<Persisted>("load_state"));
+  }, [accept]);
   useEffect(() => {
     void invoke<number>("time_scale").then(setScale);
     void refresh();
-    const unlisten = listen<AppState>("state-changed", (event) =>
-      setAppState(event.payload),
+    const unlisten = listen<Persisted>("state-changed", (event) =>
+      accept(event.payload),
     );
     const focus = () => {
       if (document.visibilityState === "visible") void refresh();
@@ -60,15 +76,25 @@ function App() {
       document.removeEventListener("visibilitychange", focus);
       void unlisten.then((off) => off());
     };
-  }, [refresh, setAppState]);
-  const dispatch = async (command: Command) => {
+  }, [refresh, accept]);
+  const dispatch = (command: Command) => {
     const result = transition(latest.current, command, Date.now(), scale);
     setAppState(result.state);
-    if (result.record) await invoke("append_record", { record: result.record });
-    await invoke("save_state", {
-      state: result.state,
-      schedule: makeSchedule(result.state),
-    });
+    pending.current++;
+    queue.current = queue.current
+      .then(async () => {
+        if (result.record)
+          await invoke("append_record", { record: result.record });
+        const saved = await invoke<number>("save_state", {
+          state: result.state,
+          schedule: makeSchedule(result.state),
+        });
+        revision.current = Math.max(revision.current, saved);
+      })
+      .catch((error) => console.error(error))
+      .finally(() => {
+        pending.current--;
+      });
   };
   const timer = appState.timer;
   const phase =
@@ -89,15 +115,13 @@ function App() {
       <input
         data-testid="title-input"
         value={appState.draft.title}
-        onChange={(e) =>
-          void dispatch({ type: "editDraft", title: e.target.value })
-        }
+        onChange={(e) => dispatch({ type: "editDraft", title: e.target.value })}
         placeholder="タイトル"
       />
       <button
         type="button"
         data-testid="start"
-        onClick={() => void dispatch({ type: "startFocus" })}
+        onClick={() => dispatch({ type: "startFocus" })}
       >
         開始
       </button>
@@ -105,7 +129,7 @@ function App() {
         type="button"
         data-testid="end"
         onClick={() =>
-          void dispatch({
+          dispatch({
             type: timer.phase === "break" ? "endBreak" : "endFocus",
           })
         }
@@ -116,7 +140,7 @@ function App() {
       <button
         type="button"
         data-testid="plus5"
-        onClick={() => void dispatch({ type: "adjust", deltaSec: 300 })}
+        onClick={() => dispatch({ type: "adjust", deltaSec: 300 })}
         disabled={timer.phase === "idle"}
       >
         +5分
@@ -124,7 +148,7 @@ function App() {
       <button
         type="button"
         data-testid="minus5"
-        onClick={() => void dispatch({ type: "adjust", deltaSec: -300 })}
+        onClick={() => dispatch({ type: "adjust", deltaSec: -300 })}
         disabled={timer.phase === "idle"}
       >
         -5分
@@ -134,14 +158,14 @@ function App() {
           <button
             type="button"
             data-testid="start-break"
-            onClick={() => void dispatch({ type: "startBreak" })}
+            onClick={() => dispatch({ type: "startBreak" })}
           >
             休憩開始
           </button>
           <button
             type="button"
             data-testid="skip-break"
-            onClick={() => void dispatch({ type: "skipBreak" })}
+            onClick={() => dispatch({ type: "skipBreak" })}
           >
             スキップ
           </button>

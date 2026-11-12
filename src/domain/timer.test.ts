@@ -41,3 +41,19 @@ describe("timer transitions", () => {
     expect(app.timer).toMatchObject({ phase: "focus", plannedSec: 5 });
   });
 });
+
+describe("draft and time scale", () => {
+  it("stores only draft fields on editDraft", () => {
+    const { state } = transition(
+      initialState,
+      { type: "editDraft", title: "a" },
+      0,
+    );
+    expect(state.draft).toEqual({ title: "a", category: "", notes: "" });
+  });
+
+  it("keeps scaled durations in whole seconds", () => {
+    const { state } = transition(initialState, { type: "startFocus" }, 0, 7);
+    expect(state.timer).toMatchObject({ phase: "focus", plannedSec: 214 });
+  });
+});
