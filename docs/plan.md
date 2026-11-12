@@ -18,9 +18,9 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 ### Arm the program
 
 - [ ] State the protocol and this plan to the operator, then stop. Start execution only on the operator's explicit go.
-- [ ] 実装担当の権限を作者に決めてもらう。設定上の実装担当と swarm workers は codex:gpt-6-luna だが、Codex の子は `~/.cargo` と pnpm のキャッシュに書けず、試作が止まった（Appendix A の A0）。`delegate_task` は親セッションの runtime mode（今は `auto`）より上を指定できないので、Codex に書かせるには作者が T3 のセッションを full-access で始め直す必要がある。それとも実装と検証の担当を Claude に替えるかを、作者の言葉で記録する。
-- [ ] 試作の P3（再署名後に通知の許可が残るか）の結果を作者から受け取り、Appendix A の A3 に記録する。pomo-5 の署名方式はこの結果で決まる。
-- [ ] 作者に、T3 を動かすアプリへ画面収録の権限を与えてもらう。`screencapture` が使えないと、メニューバーとレビュー用の動画を撮れない（Appendix A の A4）。
+- [ ] 実装担当の権限を作者に決めてもらう。作者は Codex にも任せると決めた（2026-11-12）。T3 の `auto` で起動した Codex の子は `CODEX_SANDBOX=seatbelt` と `CODEX_SANDBOX_NETWORK_DISABLED=1` の下で動き、`~/.cargo` と pnpm のキャッシュへの書き込みも、crates.io の名前解決も拒否された（A0）。`delegate_task` に `runtimeMode: "full-access"` を渡すと `runtime_mode_escalation_denied` で拒否された。Codex にビルドとテストまで任せるには、作者がこのスレッドを full-access で動かす必要がある。
+- [x] 試作の P3（再署名後に通知の許可が残るか）の結果を作者から受け取り、Appendix A の A3 に記録する。2026-11-12 に判定し、許可は残った。
+- [x] 作者に、T3 を動かすアプリへ画面収録の権限を与えてもらう。2026-11-12 に `screencapture -x` が成功した（A4）。
 - [ ] 通知を確かめるレーン用に、バンドル ID `dev.alesion30.pomo.dev` のデバッグ版を `~/Applications/pomo-dev.app` に置き、作者に一度だけ通知を許可してもらう。A3 のとおり、`.app` として登録された場所からでないと正しいバンドル ID で通知されない。
 - [ ] pomo-5 の検証で公開リリースを作る前に、作者の許可を取る。`releases/latest` はプレリリースを返さないので、検証には `v0.0.1` と `v0.0.2` の通常リリースを使い、検証の後に消す。
 - [ ] pomo-1 の CI が初めて動いた後、`ci.yml` のジョブ名を main のルールセットの必須チェックに足す。それまでは gitleaks だけがマージを止める。
@@ -340,7 +340,6 @@ Each live lane is one `swarm workers` lane at the PR head, resolved through prov
 - [ ] 更新の署名鍵は `pnpm tauri signer generate` でリポジトリの外に作り、`gh secret set` に直接渡す。鍵を画面にもファイルにも残さない。公開鍵だけを `tauri.conf.json` に書く。
 - [ ] `tauri-plugin-updater` の確認先を `https://github.com/alesion30/pomo/releases/latest/download/latest.json` にする。起動時と 6 時間おきに確認し、見つかったらポップオーバーに「更新あり」を出す。押せるのは待機中だけにする。
 - [ ] `tauri-plugin-autostart` でログイン時に起動する。デバッグビルドでは登録しない。
-- [ ] Appendix A の A3 で許可が外れると分かった場合は、自己署名の証明書を作って Actions secrets に置き、署名を固定する。
 - [ ] README に、dmg からの入れ方、`/Applications` に置くこと、初回だけ `xattr -cr /Applications/pomo.app` が要ることを書く。
 
 **You see.**
@@ -394,15 +393,15 @@ Each live lane is one `swarm workers` lane at the PR head, resolved through prov
 
 試作は使い捨てで、コードは git に入れていません。観測の詳細は、個人のパスを伏せて [prototype-report.md](prototype-report.md) に写しました。使った版は tauri 2.12.5、tao 0.37.2、tauri-plugin-notification 2.8.1、tauri-nspanel 2.1.1、objc2 0.6.5 です。
 
-**A0. 実装担当の権限。** codex:gpt-6-luna の子は、pnpm の dlx キャッシュへの書き込みを拒否されて試作を始められなかった。Tauri のビルドは `~/.cargo` などへの書き込みを要るため、同じ権限のままでは owner も swarm workers も動かないと推論している。Claude の子は同じ試作を最後まで進めた。
+**A0. 実装担当の権限。** T3 の `auto` で起動した Codex の子は、seatbelt のサンドボックスでネットワークを切られ、ホーム配下に書けない。pnpm の dlx キャッシュ、`~/.cargo` への書き込みと、`index.crates.io` の名前解決がすべて拒否された。子に `full-access` を渡す指定は、親より広いとして T3 に拒否された。Claude の子は同じ試作を最後まで進めた。
 
 **A1. 他アプリの全画面の上に出せる。** Swift で作った全画面ウィンドウが前面のとき、3 方式とも pomo のウィンドウが画面に載った。(a) Tauri 標準は layer 5 で載ったが、スペース切り替えの途中で消えたサンプルが 9 回あった。(b) objc2 で 8 行足す方式は layer 25 で 49 サンプルすべてに載った。(c) tauri-nspanel は layer 25 で載り、前面アプリも変わらなかった。全画面の上で入力欄に文字を打てるかは未確認で、pomo-3 の最初の単位で確かめる。
 
 **A2. 隠した WebView の JS は止まる。** `hide()` の約 4.5 秒後に WebContent プロセスが止められ、JS の tick は 0 回になった。同じ 12.5 分で Rust のスレッドは 750 回、p99 1.006 秒で動いた。`background_throttling` を切っても JS は約 2 秒間隔だった。このため時刻の基準とメニューバーの更新を Rust に置く。
 
-**A3. 再署名後の通知の許可は未確定。** プラグインの `isPermissionGranted` は常に許可済みを返すので、判定には使えない。通知は NSUserNotification で送られる。`~/Applications` に置いた .app は正しいバンドル ID で通知した。CDHash を変えて上書きしても再要求は出なかったが、作者が許可を出す前の観測なので結論は出ていない。作者が許可を出した後に、試作の `tools/p3-after-allow.sh` を実行して判定する。同じアプリで UNUserNotificationCenter を呼ぶと、以後の旧 API の通知が拒否された。
+**A3. 再署名しても通知の許可は残る。** 作者が許可を出した後、同じ場所の .app を CDHash の違うビルドに置き換えて通知を送った。置き換えの前後とも usernoted のログは `as banner (["badge", "sound", "alert"])` で、内部の識別子は `21E37DF4` から `5C894C2D` に変わったが、許可の再要求は出なかった。このため pomo-5 は ad-hoc 署名のままでよい。プラグインの `isPermissionGranted` は常に許可済みを返すので、判定には使えない。通知は NSUserNotification で送られる。.app は `~/Applications` か `/Applications` に置かないと、ターミナル名義で通知される。同じアプリで UNUserNotificationCenter を呼ぶと、以後の旧 API の通知が拒否された。
 
-**A4. 未確認のまま計画に入れたもの。** WebdriverIO の embedded ドライバは試作で動かしていない。Tauri の公式文書が macOS 対応と書いているだけである。pomo-1 の最初の単位で確かめ、だめなら制御ソケットと `screencapture` に替える。`screencapture` は画面収録の権限がなく `could not create image from display` で失敗した。
+**A4. 未確認のまま計画に入れたもの。** WebdriverIO の embedded ドライバは試作で動かしていない。Tauri の公式文書が macOS 対応と書いているだけである。pomo-1 の最初の単位で確かめ、だめなら制御ソケットと `screencapture` に替える。`screencapture` は、作者が画面収録の権限を与えた後の 2026-11-12 に成功した。
 
 ## Appendix B. Alternatives rejected
 
@@ -420,11 +419,11 @@ Each live lane is one `swarm workers` lane at the PR head, resolved through prov
 
 - **実装担当が動かない。** A0 のとおり、Codex の子の権限では Tauri をビルドできない見込みである。Arm the program の最初の判断で決める。全 PR に効く。
 - **GUI の検証が 1 台の Mac で衝突する。** 複数のレーンが同時にトレイと前面ウィンドウを出すと、互いの観測を乱す。boot recipe のロックで GUI のレーンを 1 本ずつ流す。試作中は別プロセスの Computer Use が同じ Mac を操作して前面アプリが切り替わったので、検証中は他の自動操作を止める。全 PR に効く。
-- **メニューバーの文字列を直接撮れない。** `screencapture` は画面収録の権限がなく失敗した。レーンは `scripts/pomoctl title` で Rust が最後に設定した文字列を読む。作者が画面収録の権限を与えるまで、メニューバーのスクリーンショットとレビュー用の動画は撮れない。pomo-2 以降に効く。
+- **メニューバーの文字列は画面収録の権限に頼る。** 権限は与えられたが、外れると `screencapture` が失敗する。その場合もレーンは `scripts/pomoctl title` で Rust が最後に設定した文字列を読める。pomo-2 以降に効く。
 - **WebDriver が隠れたウィンドウに届かない。** 隠した WebView は約 4.5 秒で止まるので、隠れている間の操作と観測はすべて制御ソケットで行う。全 PR に効く。
 - **全画面の上で文字を打てないかもしれない。** NSPanel のキーウィンドウの扱いによっては入力を受けない。pomo-3 の最初の単位で確かめ、打てなければ (c) に替える。
 - **通知の API が古い。** プラグインは NSUserNotification を使う。将来の macOS で動かなくなったら、objc2 で UNUserNotificationCenter に移す。pomo-3 で owner が見張る。
-- **更新のたびに通知の許可が外れるかもしれない。** A3 の判定次第で、pomo-5 で自己署名の証明書に替える。
+- **更新で .app の置き場所が変わると通知の許可が外れるかもしれない。** A3 は同じ場所での置き換えだけを確かめた。pomo-5 の Lane 6 で、更新後の通知を確かめる。
 - **`POMO_TIME_SCALE` が本番に効く。** デバッグビルドでだけ読むことを pomo-2 のレーンとレビューで確かめる。撤去条件は、時間を縮めた E2E が要らなくなったとき。
 - **WebDriver の口と制御ソケットがリリース版に残る。** pomo-1 の Lane 5 で接続できないことを確かめる。
 - **公開リポジトリに秘密情報が入る。** pre-commit、CI、GitHub の Push protection の 3 層で防ぐ。更新の署名鍵は Actions secrets にだけ置く。pomo-5 で owner が見張る。
