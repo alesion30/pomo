@@ -99,15 +99,8 @@ export function useTimer() {
             baseRevision: revision.current,
           });
           revision.current = saved;
-          if (result.record) {
+          if (result.record)
             await invoke("append_record", { record: result.record });
-            const categories = await invoke<string[]>("recent_categories");
-            window.dispatchEvent(
-              new CustomEvent("recent-categories-updated", {
-                detail: categories,
-              }),
-            );
-          }
         })
         .catch((error) => console.error(error))
         .finally(() => {
@@ -117,13 +110,27 @@ export function useTimer() {
     },
     [refresh, scale, setAppState],
   );
+  // 読み込み中の操作は画面にだけ先に反映し、読み込みが終わったら正本に対して順に流し直す。
+  // 画面に出さないと、制御された入力欄が打つたびに古い値へ戻り、文字が抜ける。
+  const deferred = useRef<Command[]>([]);
   const dispatch = useCallback(
     (command: Command) => {
       const loading = syncing.current;
       if (!loading) return run(command);
-      void loading.catch(() => {}).then(() => run(command));
+      deferred.current.push(command);
+      setAppStateRaw(
+        (shown) => transition(shown, command, Date.now(), scale).state,
+      );
+      if (deferred.current.length > 1) return;
+      void loading
+        .catch(() => {})
+        .then(() => {
+          const commands = deferred.current;
+          deferred.current = [];
+          for (const next of commands) run(next);
+        });
     },
-    [run],
+    [run, scale],
   );
   return { appState, now, dispatch };
 }

@@ -69,9 +69,10 @@ impl StateStore {
         }
         let mut ordered = Vec::new();
         let mut seen = std::collections::HashSet::new();
-        if let Ok(contents) = fs::read_to_string(&path) {
-            for line in contents.lines().rev() {
-                if let Ok(item) = serde_json::from_str::<CategoryLine>(line)
+        // 行ごとに読むので、手編集などで UTF-8 として壊れた行があってもその行だけを飛ばせる。
+        if let Ok(contents) = fs::read(&path) {
+            for line in contents.split(|b| *b == b'\n').rev() {
+                if let Ok(item) = serde_json::from_slice::<CategoryLine>(line)
                     && let Some(category) = item.category.filter(|s| !s.is_empty())
                     && seen.insert(category.clone())
                 {
@@ -122,10 +123,12 @@ impl StateStore {
 
 #[tauri::command]
 pub fn append_record(
+    app: AppHandle,
     store: tauri::State<'_, StateStore>,
     record: serde_json::Value,
 ) -> Result<(), String> {
-    store.append(record)
+    store.append(record)?;
+    app.emit("records-changed", ()).map_err(|e| e.to_string())
 }
 #[tauri::command]
 pub fn save_state(
@@ -146,7 +149,8 @@ pub fn load_state(store: tauri::State<'_, StateStore>) -> Result<Persisted, Stri
         .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+// 1 万行のログを読み直すと数十 ms かかるので、メインスレッドを止めないよう非同期で動かす。
+#[tauri::command(async)]
 pub fn recent_categories(store: tauri::State<'_, StateStore>) -> Result<Vec<String>, String> {
     store.recent_categories()
 }
@@ -165,7 +169,7 @@ mod tests {
                 .as_nanos()
         ));
         fs::create_dir_all(&dir).unwrap();
-        fs::write(dir.join("sessions.jsonl"), "{\"category\":\"old\",\"extra\":1}\nnot json\n{\"category\":null}\n{\"category\":\"new\"}\n{\"category\":\"old\"}\n{\"category\":\"\"}\n").unwrap();
+        fs::write(dir.join("sessions.jsonl"), b"{\"category\":\"old\",\"extra\":1}\n\xff\xfe broken\nnot json\n{\"category\":null}\n{\"category\":\"new\"}\n{\"category\":\"old\"}\n{\"category\":\"\"}\n").unwrap();
         let store = StateStore::new(dir.clone());
         assert_eq!(store.recent_categories().unwrap(), vec!["old", "new"]);
         fs::remove_dir_all(dir).unwrap();

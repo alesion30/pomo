@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useCallback, useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { type AppState, type Command, view } from "../domain/timer";
 import { filterCategories } from "./categories";
 import "./popover.css";
@@ -26,26 +27,28 @@ export function Popover({
   const time = view(timer, now);
   const seconds = time.overtimeSec || time.remainingSec;
   const clock = `${time.overtimeSec ? "+" : ""}${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-  const refreshCategories = useCallback(
-    () =>
-      void invoke<string[]>("recent_categories")
-        .then(setCategories)
-        .catch(console.error),
-    [],
-  );
+  // 取得は非同期で並ぶので、後から届いた古い結果で上書きしない。
+  const request = useRef(0);
+  const refreshCategories = useCallback(() => {
+    const id = ++request.current;
+    void invoke<string[]>("recent_categories")
+      .then((list) => {
+        if (id === request.current) setCategories(list);
+      })
+      .catch(console.error);
+  }, []);
   useEffect(() => {
     refreshCategories();
     const refresh = () => {
       if (document.visibilityState === "visible") refreshCategories();
     };
-    const updated = (event: Event) =>
-      setCategories((event as CustomEvent<string[]>).detail);
     window.addEventListener("focus", refresh);
-    window.addEventListener("recent-categories-updated", updated);
+    // 記録はどちらのウィンドウからも追記されるので、Rust からの通知で候補を取り直す。
+    const unlisten = listen("records-changed", refreshCategories);
     document.addEventListener("visibilitychange", refresh);
     return () => {
       window.removeEventListener("focus", refresh);
-      window.removeEventListener("recent-categories-updated", updated);
+      void unlisten.then((off) => off());
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [refreshCategories]);
@@ -110,12 +113,11 @@ export function Popover({
         <button
           type="button"
           data-testid="end"
-          onClick={() => {
+          onClick={() =>
             dispatch({
               type: timer.phase === "break" ? "endBreak" : "endFocus",
-            });
-            refreshCategories();
-          }}
+            })
+          }
           disabled={timer.phase === "idle"}
         >
           終了
