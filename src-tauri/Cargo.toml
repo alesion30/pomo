@@ -26,6 +26,8 @@ tauri-plugin-notification = "2.8.1"
 objc2-app-kit = { version = "0.3", features = ["NSWindow", "NSResponder", "NSScreen", "NSEvent"] }
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", features = ["NSGeometry"] }
+tauri-plugin-updater = "2.14.1"
+tauri-plugin-autostart = "2.7.0"
 
 
 [profile.release]
