@@ -1,5 +1,7 @@
 #[cfg(debug_assertions)]
 mod debug;
+mod notify;
+mod panel;
 mod paths;
 mod schedule;
 mod store;
@@ -82,8 +84,9 @@ fn time_scale() -> f64 {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder =
-        tauri::Builder::default().plugin(tauri_plugin_single_instance::init(|_, _, _| {}));
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
+        .plugin(tauri_plugin_notification::init());
     #[cfg(debug_assertions)]
     let builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
     builder
@@ -94,9 +97,11 @@ pub fn run() {
             store::append_record,
             store::save_state,
             store::load_state,
-            time_scale
+            time_scale,
+            panel::hide_front
         ])
         .setup(|app| {
+            panel::configure(app.handle());
             #[cfg(target_os = "macos")]
             app.handle()
                 .set_activation_policy(tauri::ActivationPolicy::Accessory)?;
@@ -140,6 +145,10 @@ pub fn run() {
                     let now = chrono_millis();
                     set_title(&handle, schedule::format_title(schedule.as_ref(), now));
                     if due.should_fire(schedule.as_ref(), now) {
+                        if let Some(s) = schedule.as_ref() {
+                            panel::show_front(&handle);
+                            notify::phase_due(&handle, &s.kind);
+                        }
                         let _ = handle.emit("phase-due", ());
                     }
                     // 予定時刻と同じ秒の位相の少し後に起きる。位相がずれると、表示の秒が飛んだり重なったりする。
