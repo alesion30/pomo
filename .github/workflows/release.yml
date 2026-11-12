@@ -25,6 +25,16 @@ jobs:
       - run: rustup target add aarch64-apple-darwin
       - run: jq --arg v "${GITHUB_REF_NAME#v}" '.version = $v' src-tauri/tauri.conf.json > tmp && mv tmp src-tauri/tauri.conf.json
       - run: pnpm install --frozen-lockfile
+      # tauri-action の Release 作成は GITHUB_TOKEN で拒否された（v0.0.1）。先に gh で作り、tauri-action は成果物の追加だけを行う。
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 && exit 0
+          flags=()
+          [[ "$GITHUB_REF_NAME" == *-* ]] && flags+=(--prerelease)
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "pomo $GITHUB_REF_NAME" --notes "" "${flags[@]}"
       - uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # action-v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
