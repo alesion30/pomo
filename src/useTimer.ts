@@ -51,10 +51,18 @@ export function useTimer() {
     },
     [setAppState],
   );
-  const refresh = useCallback(
-    async () => accept(await invoke<Persisted>("load_state")),
-    [accept],
-  );
+  // 読み込み中の操作は、読み込みが終わってから最新の状態に対して計算する。
+  // 先に計算すると、古い版を元にした保存として拒否され、操作が消える。
+  const syncing = useRef<Promise<void> | null>(null);
+  const refresh = useCallback(() => {
+    const loading: Promise<void> = invoke<Persisted>("load_state")
+      .then(accept)
+      .finally(() => {
+        if (syncing.current === loading) syncing.current = null;
+      });
+    syncing.current = loading;
+    return loading;
+  }, [accept]);
   useEffect(() => {
     void invoke<number>("time_scale").then(setScale);
     void refresh();
@@ -77,7 +85,7 @@ export function useTimer() {
       void unlisten.then((off) => off());
     };
   }, [refresh, accept]);
-  const dispatch = useCallback(
+  const run = useCallback(
     (command: Command) => {
       const result = transition(latest.current, command, Date.now(), scale);
       setAppState(result.state);
@@ -101,6 +109,14 @@ export function useTimer() {
         });
     },
     [refresh, scale, setAppState],
+  );
+  const dispatch = useCallback(
+    (command: Command) => {
+      const loading = syncing.current;
+      if (!loading) return run(command);
+      void loading.catch(() => {}).then(() => run(command));
+    },
+    [run],
   );
   return { appState, now, dispatch };
 }
