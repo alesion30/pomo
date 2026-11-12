@@ -27,19 +27,28 @@ pub fn show_front<R: tauri::Runtime>(app: &AppHandle<R>) {
     });
 }
 
-// 複数ディスプレイでは、作業中の画面（キー入力を受けているウィンドウがある画面）の中央に出す。
+// 複数ディスプレイでは、マウスカーソルがある画面（作業中の画面）の中央に出す。
 // tao の center() はウィンドウが今いる画面に寄せるので、全画面アプリと別の画面に出てしまう。
+// NSScreen.mainScreen は pomo がキーウィンドウを持たない時に作業中の画面を返さないので使わない。
 fn center_on_key_screen<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
     #[cfg(target_os = "macos")]
     {
         use objc2::MainThreadMarker;
-        use objc2_app_kit::NSScreen;
+        use objc2_app_kit::{NSEvent, NSScreen};
         use objc2_foundation::NSPoint;
         let (Some(mtm), Ok(ptr)) = (MainThreadMarker::new(), window.ns_window()) else {
             let _ = window.center();
             return;
         };
-        let Some(screen) = NSScreen::mainScreen(mtm) else {
+        let mouse = NSEvent::mouseLocation();
+        let screens = NSScreen::screens(mtm);
+        let Some(screen) = screens.iter().find(|screen| {
+            let f = screen.frame();
+            mouse.x >= f.origin.x
+                && mouse.x < f.origin.x + f.size.width
+                && mouse.y >= f.origin.y
+                && mouse.y < f.origin.y + f.size.height
+        }) else {
             let _ = window.center();
             return;
         };
