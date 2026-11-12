@@ -21,10 +21,38 @@ pub fn show_front<R: tauri::Runtime>(app: &AppHandle<R>) {
         return;
     };
     let _ = app.run_on_main_thread(move || {
-        let _ = window.center();
+        center_on_key_screen(&window);
         let _ = window.show();
         let _ = window.set_focus();
     });
+}
+
+// 複数ディスプレイでは、作業中の画面（キー入力を受けているウィンドウがある画面）の中央に出す。
+// tao の center() はウィンドウが今いる画面に寄せるので、全画面アプリと別の画面に出てしまう。
+fn center_on_key_screen<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
+    #[cfg(target_os = "macos")]
+    {
+        use objc2::MainThreadMarker;
+        use objc2_app_kit::NSScreen;
+        use objc2_foundation::NSPoint;
+        let (Some(mtm), Ok(ptr)) = (MainThreadMarker::new(), window.ns_window()) else {
+            let _ = window.center();
+            return;
+        };
+        let Some(screen) = NSScreen::mainScreen(mtm) else {
+            let _ = window.center();
+            return;
+        };
+        let ns_window = unsafe { &*(ptr as *const NSWindow) };
+        let area = screen.visibleFrame();
+        let size = ns_window.frame().size;
+        ns_window.setFrameOrigin(NSPoint::new(
+            area.origin.x + (area.size.width - size.width) / 2.0,
+            area.origin.y + (area.size.height - size.height) / 2.0,
+        ));
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = window.center();
 }
 
 #[tauri::command]
@@ -35,9 +63,7 @@ pub fn hide_front<R: tauri::Runtime>(app: AppHandle<R>) {
         let _ = app.run_on_main_thread(move || {
             let _ = window.hide();
             // 全画面アプリの上で閉じた時に、キー入力を元のアプリへ返す。ポップオーバーが出ている間は隠さない。
-            let popover_visible = popover
-                .and_then(|p| p.is_visible().ok())
-                .unwrap_or(false);
+            let popover_visible = popover.and_then(|p| p.is_visible().ok()).unwrap_or(false);
             #[cfg(target_os = "macos")]
             if !popover_visible {
                 let _ = handle.hide();

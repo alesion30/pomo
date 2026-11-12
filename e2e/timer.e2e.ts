@@ -1,11 +1,15 @@
 import { strict as assert } from "node:assert";
+import { execFileSync } from "node:child_process";
 import { browser } from "@wdio/globals";
+import { switchTo } from "./windows";
 
 declare function describe(title: string, fn: () => void): void;
 declare function it(title: string, fn: () => Promise<void>): void;
 
 describe("timer", () => {
   it("starts and ends a focus session", async () => {
+    execFileSync("scripts/pomoctl", ["tray-click"]);
+    await switchTo("popover");
     const title = await browser.$('[data-testid="title-input"]');
     await title.setValue("E2E task");
     await browser.$('[data-testid="start"]').click();
