@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+jobs:
+  release:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      # 版はタグから決めるので、SemVer でないタグは署名鍵を渡す前に止める。
+      - run: '[[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: rustup target add aarch64-apple-darwin
+      - run: jq --arg v "${GITHUB_REF_NAME#v}" '.version = $v' src-tauri/tauri.conf.json > tmp && mv tmp src-tauri/tauri.conf.json
+      - run: pnpm install --frozen-lockfile
+      # tauri-action の Release 作成は GITHUB_TOKEN で拒否された（v0.0.1）。先に gh で作り、tauri-action は成果物の追加だけを行う。
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 && exit 0
+          flags=()
+          [[ "$GITHUB_REF_NAME" == *-* ]] && flags+=(--prerelease)
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "pomo $GITHUB_REF_NAME" --notes "" "${flags[@]}"
+      - uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # action-v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: pomo ${{ github.ref_name }}
+          releaseDraft: false
+          # -rc.1 などはプレリリースにして、releases/latest を見る自動更新の対象から外す。
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          uploadUpdaterJson: true
+          args: --target aarch64-apple-darwin
+      # tauri-action は latest.json に API の asset URL を書く。認証なしの API は IP ごとに 1 時間 60 回までで、
+      # 共有の IP からだと更新のダウンロードが 403 になるので、レート制限のない Releases の URL に置き換える。
+      - name: Point latest.json at release downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: scripts/release-download-urls.sh "$GITHUB_REF_NAME"

@@ -5,6 +5,7 @@ mod panel;
 mod paths;
 mod schedule;
 mod store;
+mod update;
 
 use schedule::{DueTracker, Schedule};
 use std::sync::Mutex;
@@ -92,7 +93,13 @@ fn time_scale() -> f64 {
 pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
-        .plugin(tauri_plugin_notification::init());
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build());
+    #[cfg(not(debug_assertions))]
+    let builder = builder.plugin(tauri_plugin_autostart::init(
+        tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+        None,
+    ));
     #[cfg(debug_assertions)]
     let builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
     builder
@@ -107,15 +114,29 @@ pub fn run() {
         .manage(TrayTitle(Mutex::new("pomo".into())))
         .manage(ActiveSchedule(Mutex::new(None)))
         .manage(store::StateStore::new(paths::data_dir()))
+        .manage(update::AvailableUpdate(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             store::append_record,
             store::save_state,
             store::load_state,
             store::recent_categories,
             time_scale,
-            panel::hide_front
+            panel::hide_front,
+            update::update_status,
+            update::apply_update
         ])
         .setup(|app| {
+            #[cfg(not(debug_assertions))]
+            {
+                use tauri_plugin_autostart::ManagerExt;
+                // 毎回いまの実行ファイルで登録し直す。初回を dmg の中から起動しても、
+                // /Applications から起動した時に正しい場所へ書き換わる。
+                // 登録に失敗してもタイマーは使えるので、起動は止めずに記録だけ残す。
+                if let Err(error) = app.autolaunch().enable() {
+                    eprintln!("autostart registration failed: {error}");
+                }
+            }
+            update::start_checks(app.handle().clone());
             panel::configure(app.handle());
             #[cfg(target_os = "macos")]
             app.handle()

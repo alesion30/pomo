@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type AppState, type Command, view } from "../domain/timer";
 import { filterCategories } from "./categories";
+import { UpdateButton } from "./UpdateButton";
 import "./popover.css";
 
 export function Popover({
@@ -15,6 +16,9 @@ export function Popover({
   dispatch: (command: Command) => void;
 }) {
   const [categories, setCategories] = useState<string[]>([]);
+  const [updateVersion, setUpdateVersion] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [applying, setApplying] = useState(false);
   const timer = appState.timer;
   const phase =
     timer.phase === "idle"
@@ -52,6 +56,35 @@ export function Popover({
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [refreshCategories]);
+  const refreshUpdate = useCallback(() => {
+    void invoke<string | null>("update_status")
+      .then(setUpdateVersion)
+      .catch(console.error);
+  }, []);
+  const applyUpdate = useCallback(() => {
+    setUpdateError(null);
+    setApplying(true);
+    void invoke<void>("apply_update").catch((error: unknown) => {
+      setApplying(false);
+      setUpdateError(String(error));
+    });
+  }, []);
+  useEffect(() => {
+    refreshUpdate();
+    const refresh = () => {
+      if (document.visibilityState === "visible") refreshUpdate();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    const unlisten = listen<string>("update-available", (event) =>
+      setUpdateVersion(event.payload),
+    );
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      void unlisten.then((off) => off());
+    };
+  }, [refreshUpdate]);
   const edit = (field: "title" | "category" | "notes", value: string) =>
     dispatch({ type: "editDraft", [field]: value });
   const suggestions = filterCategories(categories, appState.draft.category);
@@ -63,6 +96,13 @@ export function Popover({
       <div data-testid="clock" className="clock">
         {timer.phase === "idle" ? "--:--" : clock}
       </div>
+      <UpdateButton
+        version={updateVersion}
+        phase={timer.phase}
+        applying={applying}
+        onApply={applyUpdate}
+      />
+      {updateError && <p role="alert">更新に失敗しました: {updateError}</p>}
       <label>
         タイトル
         <input

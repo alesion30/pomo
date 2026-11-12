@@ -39,6 +39,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "macOS": { "signingIdentity": "-" },
     "icon": [
@@ -48,5 +49,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEYxODczQjJCMEMwMjNCNEQKUldSTk93SU1LenVIOFVHRVR5V1Z2dVBEaXQrLzMzN1lQaUlXSHNEYk1ndS9DUlJ2V0l5STR6THIK",
+      "endpoints": [
+        "https://github.com/alesion30/pomo/releases/latest/download/latest.json"
+      ]
+    }
   }
 }
