@@ -17,11 +17,13 @@ fn toggle_popover<R: Runtime>(app: &tauri::AppHandle<R>, rect: Option<Rect>) {
     if window.is_visible().unwrap_or(false) {
         let _ = window.hide();
     } else {
+        // トレイの rect は物理ピクセルなので、ウィンドウ幅も倍率込みの物理幅で引く。
+        let width = window.outer_size().map(|s| s.width as i32).unwrap_or(320);
         let position = rect
             .map(|r| {
                 let position: tauri::PhysicalPosition<i32> = r.position.to_physical(1.0);
                 let size: tauri::PhysicalSize<u32> = r.size.to_physical(1.0);
-                let x = position.x + size.width as i32 - 320;
+                let x = position.x + size.width as i32 - width;
                 let y = position.y + size.height as i32;
                 tauri::PhysicalPosition::new(x, y)
             })
