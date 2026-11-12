@@ -8,6 +8,7 @@ mod store;
 
 use schedule::{DueTracker, Schedule};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicI64, Ordering};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{Emitter, Manager, Position, Rect, Runtime};
 
@@ -33,13 +34,18 @@ fn set_schedule<R: Runtime>(app: &tauri::AppHandle<R>, schedule: Option<Schedule
     }
 }
 
+// フォーカスを失って閉じた時刻。トレイのクリックでもまずフォーカスが外れるので、
+// 直後のクリックで開き直さないために使う。
+static POPOVER_BLUR_HIDDEN_AT: AtomicI64 = AtomicI64::new(0);
+
 fn toggle_popover<R: Runtime>(app: &tauri::AppHandle<R>, rect: Option<Rect>) {
     let Some(window) = app.get_webview_window("popover") else {
         return;
     };
+    let just_hidden = chrono_millis() - POPOVER_BLUR_HIDDEN_AT.load(Ordering::Relaxed) < 300;
     if window.is_visible().unwrap_or(false) {
         let _ = window.hide();
-    } else {
+    } else if !just_hidden {
         // トレイの rect は物理ピクセルなので、ウィンドウ幅も倍率込みの物理幅で引く。
         let width = window.outer_size().map(|s| s.width as i32).unwrap_or(320);
         let position = rect
@@ -90,6 +96,14 @@ pub fn run() {
     #[cfg(debug_assertions)]
     let builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
     builder
+        // メニューバーのポップオーバーとして、他のウィンドウやアプリへ移ったら閉じる。
+        // 開いたままだと、前面ウィンドウを出した時に全画面アプリのスペースから引き戻される。
+        .on_window_event(|window, event| {
+            if window.label() == "popover" && matches!(event, tauri::WindowEvent::Focused(false)) {
+                POPOVER_BLUR_HIDDEN_AT.store(chrono_millis(), Ordering::Relaxed);
+                let _ = window.hide();
+            }
+        })
         .manage(TrayTitle(Mutex::new("pomo".into())))
         .manage(ActiveSchedule(Mutex::new(None)))
         .manage(store::StateStore::new(paths::data_dir()))
