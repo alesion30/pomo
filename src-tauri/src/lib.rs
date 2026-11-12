@@ -6,6 +6,8 @@ use std::sync::Mutex;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{Manager, Position, Rect, Runtime};
 
+// リリース版でこの値を読むのはデバッグ用の制御ソケットだけなので、読まれない警告を許す。
+#[cfg_attr(not(debug_assertions), expect(dead_code))]
 struct TrayTitle(Mutex<String>);
 
 fn toggle_popover<R: Runtime>(app: &tauri::AppHandle<R>, rect: Option<Rect>) {
@@ -40,12 +42,10 @@ pub(crate) fn debug_tray_click(app: &tauri::AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let mut builder =
+    let builder =
         tauri::Builder::default().plugin(tauri_plugin_single_instance::init(|_, _, _| {}));
     #[cfg(debug_assertions)]
-    {
-        builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
-    }
+    let builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
     builder
         .manage(TrayTitle(Mutex::new("pomo".into())))
         .setup(|app| {
