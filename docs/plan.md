@@ -9,7 +9,7 @@ PR は pomo-1、pomo-2、pomo-3、pomo-4、pomo-5 の順に積み、各 PR は 1
 
 One box is one unit of work. Every box names the evidence that checks it. A nested box is a sub-step of the box above it. Check a box only when its evidence exists, a file, a log line, a screenshot, a test run, or a SHA. The body is a how-to. The appendices explain and record.
 
-The program runs `skills/poteto-mode/playbooks/autopilot-stack.md` under the installed plugin. 実行役はマージしません。すべての PR は検証済みの状態で止め、作者が下から順にマージします。
+The program runs `skills/poteto-mode/playbooks/autopilot-full.md` under the installed plugin. 作者は 2026-11-12 に PR のマージを任せました。clean な verdict を得た PR から、担当が squash でマージします。PR は積まずに、1 つ前の PR がマージされてから `main` の上に作ります。
 
 Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -18,14 +18,13 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 ### Arm the program
 
 - [ ] State the protocol and this plan to the operator, then stop. Start execution only on the operator's explicit go.
-- [ ] 実装担当の権限を作者に決めてもらう。作者は Codex にも任せると決めた（2026-11-12）。T3 の `auto` で起動した Codex の子は `CODEX_SANDBOX=seatbelt` と `CODEX_SANDBOX_NETWORK_DISABLED=1` の下で動き、`~/.cargo` と pnpm のキャッシュへの書き込みも、crates.io の名前解決も拒否された（A0）。`delegate_task` に `runtimeMode: "full-access"` を渡すと `runtime_mode_escalation_denied` で拒否された。Codex にビルドとテストまで任せるには、作者がこのスレッドを full-access で動かす必要がある。
+- [x] 実装担当の権限を作者に決めてもらう。Codex の子はネットワークとホーム配下への書き込みを使えない（A0）。作者は 2026-11-12 に分担を次のように決めた。依存の取得、ビルド、GUI の確認、commit、push、PR の操作は親の Claude が行う。コードは Codex が書き、PR の worktree の中でオフラインのテストだけを動かす。
 - [x] 試作の P3（再署名後に通知の許可が残るか）の結果を作者から受け取り、Appendix A の A3 に記録する。2026-11-12 に判定し、許可は残った。
 - [x] 作者に、T3 を動かすアプリへ画面収録の権限を与えてもらう。2026-11-12 に `screencapture -x` が成功した（A4）。
 - [ ] 通知を確かめるレーン用に、バンドル ID `dev.alesion30.pomo.dev` のデバッグ版を `~/Applications/pomo-dev.app` に置き、作者に一度だけ通知を許可してもらう。A3 のとおり、`.app` として登録された場所からでないと正しいバンドル ID で通知されない。
 - [ ] pomo-5 の検証で公開リリースを作る前に、作者の許可を取る。`releases/latest` はプレリリースを返さないので、検証には `v0.0.1` と `v0.0.2` の通常リリースを使い、検証の後に消す。
 - [ ] pomo-1 の CI が初めて動いた後、`ci.yml` のジョブ名を main のルールセットの必須チェックに足す。それまでは gitleaks だけがマージを止める。
 - [ ] Read these from the installed plugin at program start. Re-read them at every tick.
-  - [ ] `skills/poteto-mode/playbooks/autopilot-stack.md`
   - [ ] `skills/poteto-mode/playbooks/autopilot-full.md`
   - [ ] `skills/swarm/SKILL.md`
   - [ ] `skills/poteto-mode/playbooks/opening-a-pr.md`
@@ -41,15 +40,17 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 ### Spawn owners
 
-- [ ] Spawn one owner per PR with the full lifecycle the execution playbook names. 担当は `feature, refactoring` の役割で、T3 の `delegate_task` に `isolation: "worktree"` を付けて起動する。各 owner は `git fetch origin main` の後に作業ブランチを切り、PR には `--assignee @me` を付ける。
-- [ ] Follow this dependency graph. Start dependent work only after its parent merges, or rebase its branch onto the parent's exact tip when the execution playbook stacks. A same-repository child PR targets its parent branch. A fork child PR targets trunk while retaining local parent ancestry. Freeze the bottom-to-top order because fork PR bases do not encode it.
-  - [ ] pomo-1 is first. It branches from `main`.
-  - [ ] pomo-2 after pomo-1.
-  - [ ] pomo-3 after pomo-2.
-  - [ ] pomo-4 after pomo-3.
-  - [ ] pomo-5 after pomo-4.
+- [ ] Spawn one owner per PR with the full lifecycle the execution playbook names. 分担に合わせて、owner の仕事を 2 つに分ける。
+  - [ ] 親の Claude が PR ごとの worktree を用意する。`git fetch origin main` の後、T3 の `t3_worktree_handoff` でこのスレッドを新しい worktree に移す。依存は worktree の中に取る。`CARGO_HOME=<worktree>/.cargo-home` で `cargo fetch` と `cargo build` を、`pnpm install` を一度ずつ実行する。依存の追加、ビルド、live レーン、commit、push、PR の操作、マージも親が行う。PR には `--assignee @me` を付ける。
+  - [ ] コードは `feature, refactoring` の役割の Codex が書く。T3 の `delegate_task` に `isolation: "shared"` を付けて、上の worktree で起動する。Codex は `CARGO_HOME=<worktree>/.cargo-home cargo test --offline` と `pnpm test` などオフラインで動く検証だけを行う。新しい依存が要るときは、名前と版を報告して止まる。親が追加してから、続きを新しい `delegate_task` で頼む。
+- [ ] Follow this dependency graph. Start dependent work only after its parent merges. Every PR branches from current `main` and targets `main`.
+  - [ ] pomo-1 is first.
+  - [ ] pomo-2 after pomo-1 merges.
+  - [ ] pomo-3 after pomo-2 merges.
+  - [ ] pomo-4 after pomo-3 merges.
+  - [ ] pomo-5 after pomo-4 merges.
 - [ ] Hold the file boundaries. pomo-1 は足場と CI だけを触る。pomo-2 は `src/domain/`、`src-tauri/src/schedule.rs`、`src-tauri/src/store.rs` と待機画面を持つ。pomo-3 は `src-tauri/src/panel.rs`、`src-tauri/src/notify.rs`、`src/front/` を持つ。pomo-4 は `src/popover/` を持つ。pomo-5 は `.github/workflows/release.yml`、更新と自動起動の配線、README を持つ。
-- [ ] Hold the review gate. pomo-2, pomo-3, pomo-4, and pomo-5 change an interaction. They wait for the operator's review in chat with screenshots and a video before merge.
+- [ ] 作者はマージを任せたので、どの PR もレビューの承認を待たない。操作が変わる pomo-2、pomo-3、pomo-4、pomo-5 では、スクリーンショットと動画を `docs/media/` に置き、PR とチャットに出して、作者が後から確かめられるようにする。
 
 ### PR mechanics, for every PR
 
@@ -64,11 +65,11 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 - [ ] A full swarm runs once, at the code-ready head. Another full swarm runs only for new behavior, a redesign, or a large new diff. A rebase, a merge-conflict resolution, or a minor fix gets a single verifier at the new head, and a wording-only change gets none. Run each full swarm per `skills/swarm/SKILL.md`. One gates lane. The ten live lanes from the PR's **Verify, live** block. The perf lane from its **Verify, perf** block. Two or more audit lanes, each with its own focus, that read the diff and the receipts and distrust the PR body. The root audits the receipts in the merge-ready report before the verdict.
 - [ ] Judge every finding by the execution playbook's blocking rule. The verdict is clean when none blocks. A failure on trunk behavior in a lane marked `Regression lane against trunk.` is recorded against trunk and does not block the PR. A new head gets a fresh verdict, except for results that stay valid under the patch ID rule in `skills/poteto-mode/playbooks/shipping.md`.
-- [ ] 実行役はマージしない。各 PR は、clean な verdict の SHA、patch base、patch ID を記録した検証済みの状態で止める。作者が pomo-1 から順にマージする。親がマージされて patch ID が変わった子は、新しい verdict を取ってから作者に渡す。
+- [ ] clean な verdict の SHA、patch base、patch ID を記録してから、Shipping step 5 の手順で、期待する head を指定して squash でマージする。マージ直前に `main` へ載せ直して patch ID が変わったら、新しい verdict を取ってからマージする。
 
 ### Boot recipe, for every live lane
 
-Each live lane is one `swarm workers` lane at the PR head, resolved through provider dispatch, in its own worktree or output directory, with its own receipt. Drive the surface only through the driver skill this plan names.
+Each live lane is one `swarm workers` lane at the PR head, resolved through provider dispatch, in its own worktree or output directory, with its own receipt. Drive the surface only through the driver skill this plan names. このプログラムでは、`swarm workers` を Codex ではなく親と同じ Claude（inherit-parent）の native lane で動かす。Codex の子はアプリを起動できず、ネットワークも使えないため（A0）。
 
 - [ ] `git fetch -- "$head_url" "refs/heads/$head_branch" && git checkout --detach "$head_sha"` in the lane's worktree.
 - [ ] ビルドは head の SHA ごとに 1 回だけ行う。最初のレーンが `pnpm install --frozen-lockfile` と `pnpm tauri build --debug --no-bundle` を実行し、成果物を `<scratch path>/build-<sha>/` に置く。他のレーンはそれを使う。GUI を使うレーンは同時に 1 本だけ動かす。`mkdir /tmp/pomo-gui.lock` が成功するまで待ち、終わったら消す。
@@ -136,8 +137,8 @@ Each live lane is one `swarm workers` lane at the PR head, resolved through prov
 
 - [ ] Root's clean verdict at the exact head SHA.
 - [ ] Bugbot triage done.
-- [ ] After the verdict, an owner merge uses Shipping step 4 to move the PR from its recorded patch base onto current trunk. An appended stack child keeps its recorded parent tip until that parent lands. Record the current landing SHA. Preserve the verdict only when the patch ID stays unchanged.
-- [ ] 実行役はマージしない。作者が下から順に squash でマージする。子 PR は同じリポジトリの親ブランチを base にする。
+- [ ] After the verdict, an owner merge uses Shipping step 4 to move the PR from its recorded patch base onto current trunk. Record the current landing SHA. Preserve the verdict only when the patch ID stays unchanged.
+- [ ] 親の Claude が squash でマージする。
 
 ## Build the timer core, schedule, and log (pomo-2)
 
@@ -194,18 +195,17 @@ Each live lane is one `swarm workers` lane at the PR head, resolved through prov
 - [ ] Baseline. Record the trunk value first. trunk には集中がないので値なしと記録し、待機中の CPU は pomo-1 の中央値を使う。
 - [ ] Rule. 更新間隔の p99 が 1.1 秒を超えるか、最大値が 2 秒を超えるか、CPU の 60 秒平均が 1% を超えたら失敗。
 
-**Review gate.** The operator reviews before merge.
-
-- [ ] Copy lane 1, 3, and 7 screenshots into `docs/media/pomo-2-review-*.png`.
-- [ ] Record a 30 to 60 second video of the change on a live lane. Save it as `docs/media/pomo-2-review.mp4`.
-- [ ] Post the screenshots and the video in chat. Stop at merge-ready. Wait for the operator's click.
+**Review gate.** None. pomo-2 is not review-gated.
 
 **Merge.**
 
+- [ ] Copy lane 1, 3, and 7 screenshots into `docs/media/pomo-2-review-*.png`.
+- [ ] Record a 30 to 60 second video of the change on a live lane. Save it as `docs/media/pomo-2-review.mp4`.
+- [ ] スクリーンショットと動画を PR とチャットに出す。作者の承認は待たない。
 - [ ] Root's clean verdict at the exact head SHA.
 - [ ] Bugbot triage done.
-- [ ] After the verdict, an owner merge uses Shipping step 4 to move the PR from its recorded patch base onto current trunk. An appended stack child keeps its recorded parent tip until that parent lands. Record the current landing SHA. Preserve the verdict only when the patch ID stays unchanged.
-- [ ] 実行役はマージしない。作者が pomo-1 の後に squash でマージする。この PR は同じリポジトリの pomo-1 のブランチを base にする。
+- [ ] After the verdict, an owner merge uses Shipping step 4 to move the PR from its recorded patch base onto current trunk. Record the current landing SHA. Preserve the verdict only when the patch ID stays unchanged.
+- [ ] 親の Claude が squash でマージする。
 
 ## Show the front window and notify at phase end (pomo-3)
 
@@ -255,18 +255,17 @@ Each live lane is one `swarm workers` lane at the PR head, resolved through prov
 - [ ] Baseline. Record the trunk value first. trunk には `front` がないので値なしと記録する。
 - [ ] Rule. どちらの場合も、5 回の最大値が 1.5 秒を超えたら失敗。
 
-**Review gate.** The operator reviews before merge.
-
-- [ ] Copy lane 2, 3, and 8 screenshots into `docs/media/pomo-3-review-*.png`.
-- [ ] Record a 30 to 60 second video of the change on a live lane. Save it as `docs/media/pomo-3-review.mp4`.
-- [ ] Post the screenshots and the video in chat. Stop at merge-ready. Wait for the operator's click.
+**Review gate.** None. pomo-3 is not review-gated.
 
 **Merge.**
 
+- [ ] Copy lane 2, 3, and 8 screenshots into `docs/media/pomo-3-review-*.png`.
+- [ ] Record a 30 to 60 second video of the change on a live lane. Save it as `docs/media/pomo-3-review.mp4`.
+- [ ] スクリーンショットと動画を PR とチャットに出す。作者の承認は待たない。
 - [ ] Root's clean verdict at the exact head SHA.
 - [ ] Bugbot triage done.
-- [ ] After the verdict, an owner merge uses Shipping step 4 to move the PR from its recorded patch base onto current trunk. An appended stack child keeps its recorded parent tip until that parent lands. Record the current landing SHA. Preserve the verdict only when the patch ID stays unchanged.
-- [ ] 実行役はマージしない。作者が pomo-2 の後に squash でマージする。この PR は同じリポジトリの pomo-2 のブランチを base にする。
+- [ ] After the verdict, an owner merge uses Shipping step 4 to move the PR from its recorded patch base onto current trunk. Record the current landing SHA. Preserve the verdict only when the patch ID stays unchanged.
+- [ ] 親の Claude が squash でマージする。
 
 ## Finish the popover memo inputs (pomo-4)
 
@@ -312,18 +311,17 @@ Each live lane is one `swarm workers` lane at the PR head, resolved through prov
 - [ ] Baseline. Record the trunk value first. trunk のポップオーバーの表示時間を先に測る。trunk には `recent_categories` がないので値なしと記録する。
 - [ ] Rule. `recent_categories` の p95 が 100ms を超えるか、ポップオーバーの表示が trunk より 20% 以上遅くなったら失敗。
 
-**Review gate.** The operator reviews before merge.
-
-- [ ] Copy lane 2, 4, and 6 screenshots into `docs/media/pomo-4-review-*.png`.
-- [ ] Record a 30 to 60 second video of the change on a live lane. Save it as `docs/media/pomo-4-review.mp4`.
-- [ ] Post the screenshots and the video in chat. Stop at merge-ready. Wait for the operator's click.
+**Review gate.** None. pomo-4 is not review-gated.
 
 **Merge.**
 
+- [ ] Copy lane 2, 4, and 6 screenshots into `docs/media/pomo-4-review-*.png`.
+- [ ] Record a 30 to 60 second video of the change on a live lane. Save it as `docs/media/pomo-4-review.mp4`.
+- [ ] スクリーンショットと動画を PR とチャットに出す。作者の承認は待たない。
 - [ ] Root's clean verdict at the exact head SHA.
 - [ ] Bugbot triage done.
-- [ ] After the verdict, an owner merge uses Shipping step 4 to move the PR from its recorded patch base onto current trunk. An appended stack child keeps its recorded parent tip until that parent lands. Record the current landing SHA. Preserve the verdict only when the patch ID stays unchanged.
-- [ ] 実行役はマージしない。作者が pomo-3 の後に squash でマージする。この PR は同じリポジトリの pomo-3 のブランチを base にする。
+- [ ] After the verdict, an owner merge uses Shipping step 4 to move the PR from its recorded patch base onto current trunk. Record the current landing SHA. Preserve the verdict only when the patch ID stays unchanged.
+- [ ] 親の Claude が squash でマージする。
 
 ## Release dmg builds with auto update and autostart (pomo-5)
 
@@ -371,18 +369,17 @@ Each live lane is one `swarm workers` lane at the PR head, resolved through prov
 - [ ] Baseline. Record the trunk value first. trunk のリリース版の起動時間を先に測る。trunk には dmg がないので大きさは値なしと記録する。
 - [ ] Rule. dmg が 30 MB を超えるか、起動時間が trunk より 20% 以上遅くなったら失敗。
 
-**Review gate.** The operator reviews before merge.
-
-- [ ] Copy lane 2, 3, and 5 screenshots into `docs/media/pomo-5-review-*.png`.
-- [ ] Record a 30 to 60 second video of the change on a live lane. Save it as `docs/media/pomo-5-review.mp4`.
-- [ ] Post the screenshots and the video in chat. Stop at merge-ready. Wait for the operator's click.
+**Review gate.** None. pomo-5 is not review-gated.
 
 **Merge.**
 
+- [ ] Copy lane 2, 3, and 5 screenshots into `docs/media/pomo-5-review-*.png`.
+- [ ] Record a 30 to 60 second video of the change on a live lane. Save it as `docs/media/pomo-5-review.mp4`.
+- [ ] スクリーンショットと動画を PR とチャットに出す。作者の承認は待たない。
 - [ ] Root's clean verdict at the exact head SHA.
 - [ ] Bugbot triage done.
-- [ ] After the verdict, an owner merge uses Shipping step 4 to move the PR from its recorded patch base onto current trunk. An appended stack child keeps its recorded parent tip until that parent lands. Record the current landing SHA. Preserve the verdict only when the patch ID stays unchanged.
-- [ ] 実行役はマージしない。作者が pomo-4 の後に squash でマージし、マージ後に `v0.1.0` のタグを打つ。この PR は同じリポジトリの pomo-4 のブランチを base にする。
+- [ ] After the verdict, an owner merge uses Shipping step 4 to move the PR from its recorded patch base onto current trunk. Record the current landing SHA. Preserve the verdict only when the patch ID stays unchanged.
+- [ ] 親の Claude が squash でマージする。`v0.1.0` のタグは作者の許可を得てから打つ。
 
 ## Close the program
 
@@ -393,7 +390,7 @@ Each live lane is one `swarm workers` lane at the PR head, resolved through prov
 
 試作は使い捨てで、コードは git に入れていません。観測の詳細は、個人のパスを伏せて [prototype-report.md](prototype-report.md) に写しました。使った版は tauri 2.12.5、tao 0.37.2、tauri-plugin-notification 2.8.1、tauri-nspanel 2.1.1、objc2 0.6.5 です。
 
-**A0. 実装担当の権限。** T3 の `auto` で起動した Codex の子は、seatbelt のサンドボックスでネットワークを切られ、ホーム配下に書けない。pnpm の dlx キャッシュ、`~/.cargo` への書き込みと、`index.crates.io` の名前解決がすべて拒否された。子に `full-access` を渡す指定は、親より広いとして T3 に拒否された。Claude の子は同じ試作を最後まで進めた。
+**A0. 実装担当の権限。** T3 の `auto` で起動した Codex の子は、seatbelt のサンドボックスでネットワークを切られ、ホーム配下に書けない。pnpm の dlx キャッシュ、`~/.cargo` への書き込みと、`index.crates.io` の名前解決がすべて拒否された。子に `full-access` を渡す指定は、親より広いとして T3 に拒否された。T3 は `auto` の子に `workspaceWrite` のサンドボックスを渡すので、`~/.codex/config.toml` の書き込み許可は効かない。Claude の子は同じ試作を最後まで進めた。この結果から、作者は Codex にコードとオフラインのテストだけを任せ、依存の取得とビルドを親の Claude が行う分担にした。
 
 **A1. 他アプリの全画面の上に出せる。** Swift で作った全画面ウィンドウが前面のとき、3 方式とも pomo のウィンドウが画面に載った。(a) Tauri 標準は layer 5 で載ったが、スペース切り替えの途中で消えたサンプルが 9 回あった。(b) objc2 で 8 行足す方式は layer 25 で 49 サンプルすべてに載った。(c) tauri-nspanel は layer 25 で載り、前面アプリも変わらなかった。全画面の上で入力欄に文字を打てるかは未確認で、pomo-3 の最初の単位で確かめる。
 
@@ -417,7 +414,7 @@ Each live lane is one `swarm workers` lane at the PR head, resolved through prov
 
 ## Appendix C. Risks
 
-- **実装担当が動かない。** A0 のとおり、Codex の子の権限では Tauri をビルドできない見込みである。Arm the program の最初の判断で決める。全 PR に効く。
+- **実装担当が依存を足せない。** A0 のとおり、Codex の子は依存を取得できない。依存の追加が要るたびに親との往復が増える。親が worktree の中に依存とビルドの成果物を先に用意し、Codex は `--offline` で検証する。全 PR に効く。
 - **GUI の検証が 1 台の Mac で衝突する。** 複数のレーンが同時にトレイと前面ウィンドウを出すと、互いの観測を乱す。boot recipe のロックで GUI のレーンを 1 本ずつ流す。試作中は別プロセスの Computer Use が同じ Mac を操作して前面アプリが切り替わったので、検証中は他の自動操作を止める。全 PR に効く。
 - **メニューバーの文字列は画面収録の権限に頼る。** 権限は与えられたが、外れると `screencapture` が失敗する。その場合もレーンは `scripts/pomoctl title` で Rust が最後に設定した文字列を読める。pomo-2 以降に効く。
 - **WebDriver が隠れたウィンドウに届かない。** 隠した WebView は約 4.5 秒で止まるので、隠れている間の操作と観測はすべて制御ソケットで行う。全 PR に効く。
