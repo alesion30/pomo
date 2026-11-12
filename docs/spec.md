@@ -15,25 +15,25 @@ pomo は、自分用の macOS ポモドーロアプリです。集中と休憩�
 
 ## 技術構成
 
-| 項目 | 選択 |
-|---|---|
-| アプリ基盤 | Tauri v2 |
-| UI | React、TypeScript |
-| パッケージマネージャ | pnpm |
-| 対象 | macOS、Apple Silicon（aarch64） |
-| バンドル ID | `dev.alesion30.pomo` |
+| 項目                 | 選択                            |
+| -------------------- | ------------------------------- |
+| アプリ基盤           | Tauri v2                        |
+| UI                   | React、TypeScript               |
+| パッケージマネージャ | pnpm                            |
+| 対象                 | macOS、Apple Silicon（aarch64） |
+| バンドル ID          | `dev.alesion30.pomo`            |
 
 時間の設定値はコード内の定数にします。
 
-| 定数 | 値 |
-|---|---|
-| 集中 | 25 分 |
-| 短い休憩 | 5 分 |
-| 長い休憩 | 20 分 |
-| 長い休憩までの集中回数 | 4 回 |
-| 予定時間の増減幅 | 5 分 |
-| 予定時間の下限 | 5 分 |
-| 連続とみなす間隔 | 60 分 |
+| 定数                   | 値    |
+| ---------------------- | ----- |
+| 集中                   | 25 分 |
+| 短い休憩               | 5 分  |
+| 長い休憩               | 20 分 |
+| 長い休憩までの集中回数 | 4 回  |
+| 予定時間の増減幅       | 5 分  |
+| 予定時間の下限         | 5 分  |
+| 連続とみなす間隔       | 60 分 |
 
 ## タイマー
 
@@ -84,23 +84,34 @@ pomo は、自分用の macOS ポモドーロアプリです。集中と休憩�
 
 1 行のフィールドは次のとおりです。
 
-| フィールド | 型 | 内容 |
-|---|---|---|
-| `id` | string | UUID |
-| `kind` | `"focus"` \| `"short_break"` \| `"long_break"` | フェーズの種類 |
-| `title` | string \| null | タイトル。休憩では null |
-| `category` | string \| null | カテゴリ。休憩では null |
-| `notes` | string \| null | 振り返り。休憩では null |
-| `started_at` | string | 開始時刻。タイムゾーン付きの ISO 8601 |
-| `ended_at` | string | 終了時刻。タイムゾーン付きの ISO 8601 |
-| `planned_sec` | number | 終了時点の予定時間（秒） |
-| `actual_sec` | number | 実際の経過時間（秒） |
-| `outcome` | `"completed"` \| `"ended_early"` | 予定時間に到達したかどうか |
+| フィールド    | 型                                             | 内容                                  |
+| ------------- | ---------------------------------------------- | ------------------------------------- |
+| `id`          | string                                         | UUID                                  |
+| `kind`        | `"focus"` \| `"short_break"` \| `"long_break"` | フェーズの種類                        |
+| `title`       | string \| null                                 | タイトル。休憩では null               |
+| `category`    | string \| null                                 | カテゴリ。休憩では null               |
+| `notes`       | string \| null                                 | 振り返り。休憩では null               |
+| `started_at`  | string                                         | 開始時刻。タイムゾーン付きの ISO 8601 |
+| `ended_at`    | string                                         | 終了時刻。タイムゾーン付きの ISO 8601 |
+| `planned_sec` | number                                         | 終了時点の予定時間（秒）              |
+| `actual_sec`  | number                                         | 実際の経過時間（秒）                  |
+| `outcome`     | `"completed"` \| `"ended_early"`               | 予定時間に到達したかどうか            |
 
 例:
 
 ```json
-{"id":"3f1c…","kind":"focus","title":"PRレビュー","category":"レビュー","notes":"指摘2件を返した","started_at":"2026-11-11T17:48:59+09:00","ended_at":"2026-11-11T18:24:07+09:00","planned_sec":1800,"actual_sec":2108,"outcome":"completed"}
+{
+  "id": "3f1c…",
+  "kind": "focus",
+  "title": "PRレビュー",
+  "category": "レビュー",
+  "notes": "指摘2件を返した",
+  "started_at": "2026-11-11T17:48:59+09:00",
+  "ended_at": "2026-11-11T18:24:07+09:00",
+  "planned_sec": 1800,
+  "actual_sec": 2108,
+  "outcome": "completed"
+}
 ```
 
 ## 起動と更新

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  echo "Usage: pomoctl <command>" >&2
+  exit 2
+fi
+
+socket="${XDG_DATA_HOME:-$HOME/.local/share}/pomo/debug.sock"
+if [[ ! -S "$socket" ]]; then
+  echo "pomo debug socket not found: $socket (is a debug build running?)" >&2
+  exit 1
+fi
+printf '%s\n' "$1" | nc -U "$socket"

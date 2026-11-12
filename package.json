@@ -10,8 +10,8 @@
     "build": "tsc && vite build",
     "tauri": "tauri",
     "lint": "biome check .",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p e2e/tsconfig.json",
+    "test": "vitest run --passWithNoTests",
     "e2e": "wdio run e2e/wdio.conf.ts"
   },
   "dependencies": {

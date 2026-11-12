@@ -73,7 +73,7 @@ Each live lane is one `swarm workers` lane at the PR head, resolved through prov
 
 - [ ] `git fetch -- "$head_url" "refs/heads/$head_branch" && git checkout --detach "$head_sha"` in the lane's worktree.
 - [ ] ビルドは head の SHA ごとに 1 回だけ行う。最初のレーンが `pnpm install --frozen-lockfile` と `pnpm tauri build --debug --no-bundle` を実行し、成果物を `<scratch path>/build-<sha>/` に置く。他のレーンはそれを使う。GUI を使うレーンは同時に 1 本だけ動かす。`mkdir /tmp/pomo-gui.lock` が成功するまで待ち、終わったら消す。
-- [ ] 起動時に `XDG_DATA_HOME=<lane dir>/data` と `POMO_TIME_SCALE=60` を渡す。集中 25 分は 25 秒、休憩 5 分は 5 秒、長い休憩 20 分は 20 秒になる。本物の `~/.local/share/pomo/` には触れない。
+- [ ] 起動時に `XDG_DATA_HOME=<lane dir>/data` と `POMO_TIME_SCALE=60` を渡す。macOS の Unix ソケットのパスは 104 バイトまでなので、`<lane dir>/data` を指す短い symlink `/tmp/pomo-l<n>` を作り、それを `XDG_DATA_HOME` に渡す。集中 25 分は 25 秒、休憩 5 分は 5 秒、長い休憩 20 分は 20 秒になる。本物の `~/.local/share/pomo/` には触れない。
 - [ ] 入力は 2 つの経路からだけ入れる。表示中の WebView には `pnpm e2e` の WebdriverIO（`@wdio/tauri-service` の embedded ドライバ）から入れる。トレイのクリックなど WebView を通らない操作は、デバッグビルドだけにある制御ソケットを `scripts/pomoctl` で叩く。隠した WebView は約 4.5 秒で止まるので（A2）、隠れている間の観測は WebView を通さない。読むだけの診断は 4 つ。`<lane dir>/data/pomo/sessions.jsonl` と `state.json` の中身、`scripts/pomoctl title` が Rust から返すメニューバー文字列、`scripts/pomoctl key-window` が返すキーウィンドウ、`swift scripts/onscreen.swift pomo` が返す画面上のウィンドウ一覧。
 - [ ] 通知を確かめるレーンだけは、`pnpm tauri build --debug --bundles app` で作った `pomo-dev.app` を `~/Applications/` に置き換えて起動する。
 - [ ] Save every screenshot to `<scratch path>/swarm-<pr-id>/worker-<n>/<slug>.png` and return the paths with the receipt path. スクリーンショットは `browser.saveScreenshot` で WebView から撮る。画面収録の権限は要らない。
@@ -398,19 +398,19 @@ Each live lane is one `swarm workers` lane at the PR head, resolved through prov
 
 **A3. 再署名しても通知の許可は残る。** 作者が許可を出した後、同じ場所の .app を CDHash の違うビルドに置き換えて通知を送った。置き換えの前後とも usernoted のログは `as banner (["badge", "sound", "alert"])` で、内部の識別子は `21E37DF4` から `5C894C2D` に変わったが、許可の再要求は出なかった。このため pomo-5 は ad-hoc 署名のままでよい。プラグインの `isPermissionGranted` は常に許可済みを返すので、判定には使えない。通知は NSUserNotification で送られる。.app は `~/Applications` か `/Applications` に置かないと、ターミナル名義で通知される。同じアプリで UNUserNotificationCenter を呼ぶと、以後の旧 API の通知が拒否された。
 
-**A4. 未確認のまま計画に入れたもの。** WebdriverIO の embedded ドライバは試作で動かしていない。Tauri の公式文書が macOS 対応と書いているだけである。pomo-1 の最初の単位で確かめ、だめなら制御ソケットと `screencapture` に替える。`screencapture` は、作者が画面収録の権限を与えた後の 2026-11-12 に成功した。
+**A4. WebdriverIO の embedded ドライバは動く。** 2026-11-12 に pomo-1 のデバッグ版で `@wdio/tauri-service` 1.5.1 の embedded ドライバが接続し、`browser.saveScreenshot` で「待機中」を撮れた。`tauri-plugin-wdio` を入れていないので、サービスの `addTauriApi` の段階はエラーを出すが、要素の操作とスクリーンショットには影響しない。`screencapture` は、作者が画面収録の権限を与えた後の 2026-11-12 に成功した。
 
 ## Appendix B. Alternatives rejected
 
-| 案 | 採らなかった理由 |
-|---|---|
-| Electron | すべて TypeScript で書けるが、常駐アプリとして重い。公式文書では未署名だと通知が失敗するとある。 |
-| Kairos-Pomodoro のフォーク | TS 1.6 万行の大半を削ることになり、保存先も SQLite から JSONL に作り直しになる。作者の方針は既存アプリに引きずられないこと。 |
-| 時刻を JS の setInterval で進める | A2 のとおり、隠した WebView の JS は止まる。 |
-| 状態遷移を Rust に置く | 遷移はすべて利用者の操作から起き、その時 WebView は表示中で動いている。TypeScript に置けば作者が読み書きしやすく、Rust は時刻と表示の副作用だけを持てばよい。 |
-| Tauri 標準の always_on_top だけで前面に出す | A1 でスペース切り替え中に消えるサンプルがあった。 |
-| SQLite に保存する | AI と jq から直接読める JSONL の方が目的に合う。追記だけなので壊れにくい。 |
-| CI の gitleaks を gitleaks-action で動かす | アクション側のライセンス条件に左右されない CLI の直接実行にした。 |
+| 案                                          | 採らなかった理由                                                                                                                                              |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Electron                                    | すべて TypeScript で書けるが、常駐アプリとして重い。公式文書では未署名だと通知が失敗するとある。                                                              |
+| Kairos-Pomodoro のフォーク                  | TS 1.6 万行の大半を削ることになり、保存先も SQLite から JSONL に作り直しになる。作者の方針は既存アプリに引きずられないこと。                                  |
+| 時刻を JS の setInterval で進める           | A2 のとおり、隠した WebView の JS は止まる。                                                                                                                  |
+| 状態遷移を Rust に置く                      | 遷移はすべて利用者の操作から起き、その時 WebView は表示中で動いている。TypeScript に置けば作者が読み書きしやすく、Rust は時刻と表示の副作用だけを持てばよい。 |
+| Tauri 標準の always_on_top だけで前面に出す | A1 でスペース切り替え中に消えるサンプルがあった。                                                                                                             |
+| SQLite に保存する                           | AI と jq から直接読める JSONL の方が目的に合う。追記だけなので壊れにくい。                                                                                    |
+| CI の gitleaks を gitleaks-action で動かす  | アクション側のライセンス条件に左右されない CLI の直接実行にした。                                                                                             |
 
 ## Appendix C. Risks
 
