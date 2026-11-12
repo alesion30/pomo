@@ -15,7 +15,10 @@ export function Front({
   const hide = () => {
     void invoke("hide_front");
   };
-  return state.timer.phase === "focus" ? (
+  const choosingBreak =
+    state.timer.phase === "focus" ||
+    (state.timer.phase === "idle" && state.timer.offer !== undefined);
+  return choosingBreak ? (
     <FocusEnd state={state} now={now} dispatch={dispatch} onHide={hide} />
   ) : (
     <BreakEnd state={state} now={now} dispatch={dispatch} onHide={hide} />

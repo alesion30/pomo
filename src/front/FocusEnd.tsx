@@ -18,34 +18,40 @@ export function FocusEnd({
   return (
     <section data-testid="front-screen" data-screen="focus-end">
       <h1>集中終了</h1>
-      <div data-testid="front-clock">{clock}</div>
-      <textarea
-        data-testid="front-notes"
-        value={state.draft.notes}
-        onChange={(e) => dispatch({ type: "editDraft", notes: e.target.value })}
-      />
-      <button
-        type="button"
-        data-testid="front-plus5"
-        onClick={() => {
-          dispatch({ type: "adjust", deltaSec: 300 });
-          onHide();
-        }}
-      >
-        +5分
-      </button>
-      <button
-        type="button"
-        data-testid="front-minus5"
-        onClick={() => dispatch({ type: "adjust", deltaSec: -300 })}
-      >
-        -5分
-      </button>
+      {state.timer.phase === "focus" && (
+        <>
+          <div data-testid="front-clock">{clock}</div>
+          <textarea
+            data-testid="front-notes"
+            value={state.draft.notes}
+            onChange={(e) =>
+              dispatch({ type: "editDraft", notes: e.target.value })
+            }
+          />
+          <button
+            type="button"
+            data-testid="front-plus5"
+            onClick={() => {
+              dispatch({ type: "adjust", deltaSec: 300 });
+              onHide();
+            }}
+          >
+            +5分
+          </button>
+          <button
+            type="button"
+            data-testid="front-minus5"
+            onClick={() => dispatch({ type: "adjust", deltaSec: -300 })}
+          >
+            -5分
+          </button>
+        </>
+      )}
       <button
         type="button"
         data-testid="front-start-break"
         onClick={() => {
-          dispatch({ type: "endFocus" });
+          if (state.timer.phase === "focus") dispatch({ type: "endFocus" });
           dispatch({ type: "startBreak" });
           onHide();
         }}
@@ -56,7 +62,7 @@ export function FocusEnd({
         type="button"
         data-testid="front-skip"
         onClick={() => {
-          dispatch({ type: "endFocus" });
+          if (state.timer.phase === "focus") dispatch({ type: "endFocus" });
           dispatch({ type: "skipBreak" });
         }}
       >

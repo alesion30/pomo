@@ -61,8 +61,11 @@ export function useTimer() {
     const unlisten = listen<Persisted>("state-changed", (event) =>
       accept(event.payload),
     );
+    // 隠れている間は JS が止まるので、表示し直した時点の時刻で表示を作り直す。
     const focus = () => {
-      if (document.visibilityState === "visible") void refresh();
+      if (document.visibilityState !== "visible") return;
+      setNow(Date.now());
+      void refresh();
     };
     window.addEventListener("focus", focus);
     document.addEventListener("visibilitychange", focus);
@@ -81,13 +84,15 @@ export function useTimer() {
       pending.current++;
       queue.current = queue.current
         .then(async () => {
-          if (result.record)
-            await invoke("append_record", { record: result.record });
+          // 状態の保存が通った操作だけを記録に残す。保存が版の食い違いで拒否された操作は、正本を読み直して捨てる。
           const saved = await invoke<number>("save_state", {
             state: result.state,
             schedule: makeSchedule(result.state),
+            baseRevision: revision.current,
           });
-          revision.current = Math.max(revision.current, saved);
+          revision.current = saved;
+          if (result.record)
+            await invoke("append_record", { record: result.record });
         })
         .catch((error) => console.error(error))
         .finally(() => {

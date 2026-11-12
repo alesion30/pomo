@@ -63,4 +63,18 @@ describe("FocusEnd", () => {
       [{ type: "editDraft", notes: "review" }],
     ]);
   });
+  it("starts the offered break without ending a focus again", () => {
+    const dispatch = vi.fn<(command: Command) => void>();
+    render(
+      <FocusEnd
+        state={{ ...state, timer: { phase: "idle", offer: "short_break" } }}
+        now={1_500_000}
+        dispatch={dispatch}
+        onHide={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId("front-plus5")).toBeNull();
+    fireEvent.click(screen.getByTestId("front-start-break"));
+    expect(dispatch.mock.calls).toEqual([[{ type: "startBreak" }]]);
+  });
 });

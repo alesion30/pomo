@@ -30,8 +30,18 @@ pub fn show_front<R: tauri::Runtime>(app: &AppHandle<R>) {
 #[tauri::command]
 pub fn hide_front<R: tauri::Runtime>(app: AppHandle<R>) {
     if let Some(window) = app.get_webview_window("front") {
+        let popover = app.get_webview_window("popover");
+        let handle = app.clone();
         let _ = app.run_on_main_thread(move || {
             let _ = window.hide();
+            // 全画面アプリの上で閉じた時に、キー入力を元のアプリへ返す。ポップオーバーが出ている間は隠さない。
+            let popover_visible = popover
+                .and_then(|p| p.is_visible().ok())
+                .unwrap_or(false);
+            #[cfg(target_os = "macos")]
+            if !popover_visible {
+                let _ = handle.hide();
+            }
         });
     }
 }
