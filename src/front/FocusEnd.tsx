@@ -5,12 +5,10 @@ export function FocusEnd({
   state,
   now,
   dispatch,
-  onHide,
 }: {
   state: AppState;
   now: number;
   dispatch: (command: Command) => void;
-  onHide: () => void;
 }) {
   const time = view(state.timer, now);
   const secs = time.overtimeSec || time.remainingSec;
@@ -33,7 +31,6 @@ export function FocusEnd({
             data-testid="front-plus5"
             onClick={() => {
               dispatch({ type: "adjust", deltaSec: 300 });
-              onHide();
             }}
           >
             +5分
@@ -53,7 +50,6 @@ export function FocusEnd({
         onClick={() => {
           if (state.timer.phase === "focus") dispatch({ type: "endFocus" });
           dispatch({ type: "startBreak" });
-          onHide();
         }}
       >
         休憩開始

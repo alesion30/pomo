@@ -12,7 +12,7 @@ export const config = {
       {
         appBinaryPath: app,
         driverProvider: "embedded",
-        windowLabel: "popover",
+        windowLabel: "main",
       },
     ],
   ],

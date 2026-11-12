@@ -1,29 +1,80 @@
 use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
-use tauri::{AppHandle, Manager};
+use std::sync::Mutex;
+use tauri::{AppHandle, Manager, PhysicalPosition};
+
+#[derive(Default)]
+pub struct DuePresentation {
+    pub restore: Option<Restore>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Restore {
+    pub position: PhysicalPosition<i32>,
+    pub was_visible: bool,
+}
+
+pub fn record(state: &mut DuePresentation, restore: Restore) {
+    state.restore.get_or_insert(restore);
+}
+
+pub fn take_restore(state: &mut DuePresentation) -> Option<Restore> {
+    state.restore.take()
+}
 
 pub fn behavior_flags() -> NSWindowCollectionBehavior {
     NSWindowCollectionBehavior::CanJoinAllSpaces | NSWindowCollectionBehavior::FullScreenAuxiliary
 }
 
-pub fn configure<R: tauri::Runtime>(app: &AppHandle<R>) {
-    #[cfg(target_os = "macos")]
-    if let Some(window) = app.get_webview_window("front")
-        && let Ok(ptr) = window.ns_window()
-    {
-        let ns_window = unsafe { &*(ptr as *const NSWindow) };
-        ns_window.setCollectionBehavior(behavior_flags());
-        ns_window.setLevel(25);
-    }
-}
-
-pub fn show_front<R: tauri::Runtime>(app: &AppHandle<R>) {
-    let Some(window) = app.get_webview_window("front") else {
+pub fn present_due<R: tauri::Runtime>(app: &AppHandle<R>) {
+    let Some(window) = app.get_webview_window("main") else {
         return;
     };
+    let state = app.state::<Mutex<DuePresentation>>();
+    if state.lock().unwrap().restore.is_none()
+        && let (Ok(position), Ok(visible)) = (window.outer_position(), window.is_visible())
+    {
+        record(
+            &mut state.lock().unwrap(),
+            Restore {
+                position,
+                was_visible: visible,
+            },
+        );
+    }
     let _ = app.run_on_main_thread(move || {
+        #[cfg(target_os = "macos")]
+        if let Ok(ptr) = window.ns_window() {
+            let ns_window = unsafe { &*(ptr as *const NSWindow) };
+            ns_window.setCollectionBehavior(behavior_flags());
+            ns_window.setLevel(25);
+        }
+        let _ = window.unminimize();
         center_on_key_screen(&window);
         let _ = window.show();
         let _ = window.set_focus();
+    });
+}
+
+#[tauri::command]
+pub fn end_due<R: tauri::Runtime>(app: AppHandle<R>) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    let restore = take_restore(&mut app.state::<Mutex<DuePresentation>>().lock().unwrap());
+    let Some(restore) = restore else { return };
+    let handle = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        #[cfg(target_os = "macos")]
+        if let Ok(ptr) = window.ns_window() {
+            let ns_window = unsafe { &*(ptr as *const NSWindow) };
+            ns_window.setCollectionBehavior(NSWindowCollectionBehavior::Default);
+            ns_window.setLevel(0);
+        }
+        let _ = window.set_position(tauri::Position::Physical(restore.position));
+        if !restore.was_visible {
+            let _ = window.hide();
+            let _ = handle.hide();
+        }
     });
 }
 
@@ -64,30 +115,23 @@ fn center_on_key_screen<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
     let _ = window.center();
 }
 
-#[tauri::command]
-pub fn hide_front<R: tauri::Runtime>(app: AppHandle<R>) {
-    if let Some(window) = app.get_webview_window("front") {
-        let popover = app.get_webview_window("popover");
-        let handle = app.clone();
-        let _ = app.run_on_main_thread(move || {
-            let _ = window.hide();
-            // 全画面アプリの上で閉じた時に、キー入力を元のアプリへ返す。ポップオーバーが出ている間は隠さない。
-            let popover_visible = popover.and_then(|p| p.is_visible().ok()).unwrap_or(false);
-            #[cfg(target_os = "macos")]
-            if !popover_visible {
-                let _ = handle.hide();
-            }
-        });
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
-    fn joins_all_spaces_and_fullscreen() {
-        let flags = behavior_flags();
-        assert!(flags.contains(NSWindowCollectionBehavior::CanJoinAllSpaces));
-        assert!(flags.contains(NSWindowCollectionBehavior::FullScreenAuxiliary));
+    fn due_restore_is_first_write_and_take_once() {
+        let first = Restore {
+            position: PhysicalPosition::new(1, 2),
+            was_visible: false,
+        };
+        let second = Restore {
+            position: PhysicalPosition::new(3, 4),
+            was_visible: true,
+        };
+        let mut state = DuePresentation::default();
+        record(&mut state, first);
+        record(&mut state, second);
+        assert_eq!(take_restore(&mut state), Some(first));
+        assert_eq!(take_restore(&mut state), None);
     }
 }

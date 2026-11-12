@@ -2,7 +2,6 @@ import { strict as assert } from "node:assert";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { browser } from "@wdio/globals";
-import { switchTo } from "./windows";
 
 declare function describe(title: string, fn: () => void): void;
 declare function it(title: string, fn: () => Promise<void>): void;
@@ -10,7 +9,6 @@ declare function it(title: string, fn: () => Promise<void>): void;
 describe("popover memo inputs", () => {
   it("saves focus notes and suggests recent categories", async () => {
     execFileSync("scripts/pomoctl", ["tray-click"], { encoding: "utf8" });
-    await switchTo("popover");
     // 前の spec が集中や休憩を残していることがあるので、待機に戻してから始める。
     const phase = browser.$('[data-testid="phase"]');
     if ((await phase.getText()) !== "待機中")

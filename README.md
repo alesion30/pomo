@@ -12,11 +12,13 @@
    xattr -cr /Applications/pomo.app
    ```
 
-4. 起動すると、メニューバーに `pomo` が表示されます。
+4. 起動すると、Dock に `pomo` が表示され、メインウィンドウが開きます。
 
-- 起動時と 6 時間おきに更新を確認します。新しい版があると、ポップオーバーに「更新あり」が出ます。押せるのは待機中だけで、押すと新しい版で起動し直します。
+- 起動時と 6 時間おきに更新を確認します。新しい版があると、メインウィンドウに「更新あり」が出ます。押せるのは待機中だけで、押すと新しい版で起動し直します。
 - リリース版は起動するたびに、ログイン時の自動起動を LaunchAgent（`~/Library/LaunchAgents/pomo.plist`）で登録します。
 - 状態とセッションログは `~/.local/share/pomo/` に保存されます。セッションログは `sessions.jsonl` です。
+
+ウィンドウを閉じてもタイマーは動き続けます。Dock アイコンかメニューバーの `pomo` をクリックすると開き直せます。
 
 ## 開発の準備
 
@@ -36,6 +38,6 @@ pnpm tauri build --debug --no-bundle
 pnpm e2e
 ```
 
-デバッグ版だけが `<データディレクトリ>/debug.sock` に制御ソケットを開きます。`scripts/pomoctl tray-click`、`scripts/pomoctl title`、`scripts/pomoctl key-window` で、トレイのクリック、メニューバーの文字列、キーウィンドウを扱えます。macOS のソケットのパスは 104 バイトまでなので、`XDG_DATA_HOME` には短いパスを使ってください。
+デバッグ版だけが `<データディレクトリ>/debug.sock` に制御ソケットを開きます。`scripts/pomoctl tray-click`、`scripts/pomoctl title`、`scripts/pomoctl key-window`、`scripts/pomoctl key-quit`、`scripts/pomoctl close` で、トレイのクリック、メニューバーの文字列、キーウィンドウ、メニュー経由の ⌘Q、赤ボタンでの閉じる操作を扱えます。macOS のソケットのパスは 104 バイトまでなので、`XDG_DATA_HOME` には短いパスを使ってください。
 
 `swift scripts/onscreen.swift pomo` は、画面に出ている pomo のウィンドウを JSON で出します。
