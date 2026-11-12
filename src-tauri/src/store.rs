@@ -15,9 +15,11 @@ pub struct Persisted {
     #[serde(default)]
     pub revision: u64,
 }
+type CategoryCache = Option<(u64, Option<std::time::SystemTime>, Vec<String>)>;
 pub struct StateStore {
     pub latest: Mutex<Persisted>,
     pub dir: PathBuf,
+    categories: Mutex<CategoryCache>,
 }
 
 impl StateStore {
@@ -33,6 +35,7 @@ impl StateStore {
         Self {
             latest: Mutex::new(latest),
             dir,
+            categories: Mutex::new(None),
         }
     }
     pub fn append(&self, record: serde_json::Value) -> Result<(), String> {
@@ -44,7 +47,41 @@ impl StateStore {
             .append(true)
             .open(self.dir.join("sessions.jsonl"))
             .and_then(|mut f| f.write_all(&bytes))
-            .map_err(|e| e.to_string())
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn recent_categories(&self) -> Result<Vec<String>, String> {
+        let path = self.dir.join("sessions.jsonl");
+        let metadata = fs::metadata(&path).ok();
+        let key = metadata.as_ref().map(|m| (m.len(), m.modified().ok()));
+        let mut cache = self.categories.lock().map_err(|e| e.to_string())?;
+        if let Some((length, modified, values)) = &*cache
+            && key
+                .as_ref()
+                .is_some_and(|(len, time)| len == length && time == modified)
+        {
+            return Ok(values.clone());
+        }
+        #[derive(Deserialize)]
+        struct CategoryLine {
+            category: Option<String>,
+        }
+        let mut ordered = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        // 行ごとに読むので、手編集などで UTF-8 として壊れた行があってもその行だけを飛ばせる。
+        if let Ok(contents) = fs::read(&path) {
+            for line in contents.split(|b| *b == b'\n').rev() {
+                if let Ok(item) = serde_json::from_slice::<CategoryLine>(line)
+                    && let Some(category) = item.category.filter(|s| !s.is_empty())
+                    && seen.insert(category.clone())
+                {
+                    ordered.push(category);
+                }
+            }
+        }
+        *cache = key.map(|(length, modified)| (length, modified, ordered.clone()));
+        Ok(ordered)
     }
     pub fn save(
         &self,
@@ -86,10 +123,12 @@ impl StateStore {
 
 #[tauri::command]
 pub fn append_record(
+    app: AppHandle,
     store: tauri::State<'_, StateStore>,
     record: serde_json::Value,
 ) -> Result<(), String> {
-    store.append(record)
+    store.append(record)?;
+    app.emit("records-changed", ()).map_err(|e| e.to_string())
 }
 #[tauri::command]
 pub fn save_state(
@@ -108,4 +147,31 @@ pub fn load_state(store: tauri::State<'_, StateStore>) -> Result<Persisted, Stri
         .lock()
         .map(|s| s.clone())
         .map_err(|e| e.to_string())
+}
+
+// 1 万行のログを読み直すと数十 ms かかるので、メインスレッドを止めないよう非同期で動かす。
+#[tauri::command(async)]
+pub fn recent_categories(store: tauri::State<'_, StateStore>) -> Result<Vec<String>, String> {
+    store.recent_categories()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn recent_categories_are_unique_ordered_and_skip_malformed_lines() {
+        let dir = std::env::temp_dir().join(format!(
+            "pomo-categories-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("sessions.jsonl"), b"{\"category\":\"old\",\"extra\":1}\n\xff\xfe broken\nnot json\n{\"category\":null}\n{\"category\":\"new\"}\n{\"category\":\"old\"}\n{\"category\":\"\"}\n").unwrap();
+        let store = StateStore::new(dir.clone());
+        assert_eq!(store.recent_categories().unwrap(), vec!["old", "new"]);
+        fs::remove_dir_all(dir).unwrap();
+    }
 }

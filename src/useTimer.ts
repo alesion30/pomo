@@ -40,25 +40,45 @@ export function useTimer() {
   }, []);
   const [now, setNow] = useState(Date.now());
   const [scale, setScale] = useState(1);
+  const scaleRef = useRef(1);
+  scaleRef.current = scale;
   const revision = useRef(0);
   const pending = useRef(0);
   const queue = useRef<Promise<void>>(Promise.resolve());
-  const accept = useCallback(
-    (saved: Persisted) => {
-      if (pending.current > 0 || saved.revision < revision.current) return;
-      revision.current = saved.revision;
-      if (saved.app) setAppState(saved.app);
-    },
-    [setAppState],
-  );
-  // 読み込み中の操作は、読み込みが終わってから最新の状態に対して計算する。
-  // 先に計算すると、古い版を元にした保存として拒否され、操作が消える。
+  // 読み込み中の操作は deferred に積み、画面にだけ先に反映する。読み込みがすべて終わったら、
+  // 正本に対して順に流し直す。先に保存すると古い版を元にした保存として拒否され、操作が消える。
+  const deferred = useRef<Command[]>([]);
+  const runRef = useRef<(command: Command) => void>(() => {});
+  // 保存の応答待ちの間は取り込まず false を返す。その間に積んだ操作は、列が空になった後の読み込みで流し直す。
+  const accept = useCallback((saved: Persisted) => {
+    if (pending.current > 0) return false;
+    if (saved.revision < revision.current) return true;
+    revision.current = saved.revision;
+    if (!saved.app) return true;
+    latest.current = saved.app;
+    // 未保存の操作は正本の上に重ねて見せ、打った文字が画面から消えないようにする。
+    let shown = saved.app;
+    for (const command of deferred.current)
+      shown = transition(shown, command, Date.now(), scaleRef.current).state;
+    setAppStateRaw(shown);
+    return true;
+  }, []);
   const syncing = useRef<Promise<void> | null>(null);
-  const refresh = useCallback(() => {
+  const refresh: () => Promise<void> = useCallback(() => {
     const loading: Promise<void> = invoke<Persisted>("load_state")
-      .then(accept)
-      .finally(() => {
-        if (syncing.current === loading) syncing.current = null;
+      .then(accept, (error) => {
+        console.error(error);
+        // 正本を読めないまま流し直すと古い版で保存して拒否されるので、少し待って読み直す。
+        if (deferred.current.length > 0) setTimeout(() => void refresh(), 500);
+        return false;
+      })
+      .then((accepted) => {
+        if (syncing.current !== loading) return;
+        syncing.current = null;
+        if (!accepted) return;
+        const commands = deferred.current;
+        deferred.current = [];
+        for (const command of commands) runRef.current(command);
       });
     syncing.current = loading;
     return loading;
@@ -112,11 +132,16 @@ export function useTimer() {
   );
   const dispatch = useCallback(
     (command: Command) => {
-      const loading = syncing.current;
-      if (!loading) return run(command);
-      void loading.catch(() => {}).then(() => run(command));
+      // 積んだ操作が残っている間は、新しい操作もその後ろに積んで順序を保つ。
+      if (!syncing.current && deferred.current.length === 0)
+        return run(command);
+      deferred.current.push(command);
+      setAppStateRaw(
+        (shown) => transition(shown, command, Date.now(), scale).state,
+      );
     },
-    [run],
+    [run, scale],
   );
+  runRef.current = run;
   return { appState, now, dispatch };
 }
