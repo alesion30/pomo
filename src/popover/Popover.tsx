@@ -18,6 +18,7 @@ export function Popover({
   const [categories, setCategories] = useState<string[]>([]);
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [applying, setApplying] = useState(false);
   const timer = appState.timer;
   const phase =
     timer.phase === "idle"
@@ -62,7 +63,9 @@ export function Popover({
   }, []);
   const applyUpdate = useCallback(() => {
     setUpdateError(null);
+    setApplying(true);
     void invoke<void>("apply_update").catch((error: unknown) => {
+      setApplying(false);
       setUpdateError(String(error));
     });
   }, []);
@@ -96,6 +99,7 @@ export function Popover({
       <UpdateButton
         version={updateVersion}
         phase={timer.phase}
+        applying={applying}
         onApply={applyUpdate}
       />
       {updateError && <p role="alert">更新に失敗しました: {updateError}</p>}

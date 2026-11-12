@@ -129,11 +129,10 @@ pub fn run() {
             #[cfg(not(debug_assertions))]
             {
                 use tauri_plugin_autostart::ManagerExt;
+                // 毎回いまの実行ファイルで登録し直す。初回を dmg の中から起動しても、
+                // /Applications から起動した時に正しい場所へ書き換わる。
                 // 登録に失敗してもタイマーは使えるので、起動は止めずに記録だけ残す。
-                let autostart = app.autolaunch();
-                if !autostart.is_enabled().unwrap_or(false)
-                    && let Err(error) = autostart.enable()
-                {
+                if let Err(error) = app.autolaunch().enable() {
                     eprintln!("autostart registration failed: {error}");
                 }
             }

@@ -15,9 +15,8 @@ pub fn update_status(update: tauri::State<'_, AvailableUpdate>) -> Option<String
         .map(|update| update.version.clone())
 }
 
-#[tauri::command]
-pub async fn apply_update(app: tauri::AppHandle) -> Result<(), String> {
-    let phase = app
+fn timer_is_idle(app: &tauri::AppHandle) -> Result<bool, String> {
+    Ok(app
         .state::<crate::store::StateStore>()
         .latest
         .lock()
@@ -26,11 +25,14 @@ pub async fn apply_update(app: tauri::AppHandle) -> Result<(), String> {
         .pointer("/timer/phase")
         .and_then(serde_json::Value::as_str)
         .unwrap_or("idle")
-        .to_owned();
-    if phase != "idle" {
+        == "idle")
+}
+
+#[tauri::command]
+pub async fn apply_update(app: tauri::AppHandle) -> Result<(), String> {
+    if !timer_is_idle(&app)? {
         return Err("更新は待機中に適用できます".into());
     }
-
     let update = app
         .state::<AvailableUpdate>()
         .0
@@ -38,8 +40,13 @@ pub async fn apply_update(app: tauri::AppHandle) -> Result<(), String> {
         .map_err(|error| error.to_string())?
         .take()
         .ok_or_else(|| "適用できる更新がありません".to_string())?;
-    if let Err(error) = update.download_and_install(|_, _| {}, || {}).await {
-        let message = error.to_string();
+    // ダウンロードで署名を検証し、入れ替える直前に待機中かを確かめ直す。ダウンロード中に集中を始めていたら入れ替えない。
+    let result = match update.download(|_, _| {}, || {}).await {
+        Ok(bytes) if timer_is_idle(&app)? => update.install(bytes).map_err(|e| e.to_string()),
+        Ok(_) => Err("更新は待機中に適用できます".into()),
+        Err(error) => Err(error.to_string()),
+    };
+    if let Err(message) = result {
         if let Ok(mut available) = app.state::<AvailableUpdate>().0.lock() {
             *available = Some(update);
         }
