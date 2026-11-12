@@ -13,22 +13,33 @@ export function QuitConfirm() {
   }, []);
   if (!shown) return null;
   return (
-    <section data-testid="quit-confirm" role="dialog" aria-modal="true">
-      <p>タイマーを終了しますか？</p>
-      <button
-        type="button"
-        data-testid="quit-confirm-ok"
-        onClick={() => void invoke("quit_app")}
+    <div className="scrim">
+      <section
+        className="dialog"
+        data-testid="quit-confirm"
+        role="dialog"
+        aria-modal="true"
       >
-        終了
-      </button>
-      <button
-        type="button"
-        data-testid="quit-confirm-cancel"
-        onClick={() => setShown(false)}
-      >
-        キャンセル
-      </button>
-    </section>
+        <p>タイマーを終了しますか？</p>
+        <div className="dialog-actions">
+          <button
+            type="button"
+            className="button"
+            data-testid="quit-confirm-cancel"
+            onClick={() => setShown(false)}
+          >
+            キャンセル
+          </button>
+          <button
+            type="button"
+            className="button danger"
+            data-testid="quit-confirm-ok"
+            onClick={() => void invoke("quit_app")}
+          >
+            終了
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
