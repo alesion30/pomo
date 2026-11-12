@@ -402,15 +402,15 @@ Each live lane is one `swarm workers` lane at the PR head, resolved through prov
 
 ## Appendix B. Alternatives rejected
 
-| 案                                          | 採らなかった理由                                                                                                                                              |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Electron                                    | すべて TypeScript で書けるが、常駐アプリとして重い。公式文書では未署名だと通知が失敗するとある。                                                              |
-| Kairos-Pomodoro のフォーク                  | TS 1.6 万行の大半を削ることになり、保存先も SQLite から JSONL に作り直しになる。作者の方針は既存アプリに引きずられないこと。                                  |
-| 時刻を JS の setInterval で進める           | A2 のとおり、隠した WebView の JS は止まる。                                                                                                                  |
-| 状態遷移を Rust に置く                      | 遷移はすべて利用者の操作から起き、その時 WebView は表示中で動いている。TypeScript に置けば作者が読み書きしやすく、Rust は時刻と表示の副作用だけを持てばよい。 |
-| Tauri 標準の always_on_top だけで前面に出す | A1 でスペース切り替え中に消えるサンプルがあった。                                                                                                             |
-| SQLite に保存する                           | AI と jq から直接読める JSONL の方が目的に合う。追記だけなので壊れにくい。                                                                                    |
-| CI の gitleaks を gitleaks-action で動かす  | アクション側のライセンス条件に左右されない CLI の直接実行にした。                                                                                             |
+| 案 | 採らなかった理由 |
+|---|---|
+| Electron | すべて TypeScript で書けるが、常駐アプリとして重い。公式文書では未署名だと通知が失敗するとある。 |
+| Kairos-Pomodoro のフォーク | TS 1.6 万行の大半を削ることになり、保存先も SQLite から JSONL に作り直しになる。作者の方針は既存アプリに引きずられないこと。 |
+| 時刻を JS の setInterval で進める | A2 のとおり、隠した WebView の JS は止まる。 |
+| 状態遷移を Rust に置く | 遷移はすべて利用者の操作から起き、その時 WebView は表示中で動いている。TypeScript に置けば作者が読み書きしやすく、Rust は時刻と表示の副作用だけを持てばよい。 |
+| Tauri 標準の always_on_top だけで前面に出す | A1 でスペース切り替え中に消えるサンプルがあった。 |
+| SQLite に保存する | AI と jq から直接読める JSONL の方が目的に合う。追記だけなので壊れにくい。 |
+| CI の gitleaks を gitleaks-action で動かす | アクション側のライセンス条件に左右されない CLI の直接実行にした。 |
 
 ## Appendix C. Risks
 

@@ -11,3 +11,4 @@ src-tauri/gen/
 .env.*
 .cargo-home/
 e2e/out/
+*.tsbuildinfo
