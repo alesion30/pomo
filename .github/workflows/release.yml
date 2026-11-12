@@ -48,3 +48,10 @@ jobs:
           prerelease: ${{ contains(github.ref_name, '-') }}
           uploadUpdaterJson: true
           args: --target aarch64-apple-darwin
+      # tauri-action は latest.json に API の asset URL を書く。認証なしの API は IP ごとに 1 時間 60 回までで、
+      # 共有の IP からだと更新のダウンロードが 403 になるので、レート制限のない Releases の URL に置き換える。
+      - name: Point latest.json at release downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: scripts/release-download-urls.sh "$GITHUB_REF_NAME"
