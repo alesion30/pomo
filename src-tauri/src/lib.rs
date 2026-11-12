@@ -1,11 +1,14 @@
 #[cfg(debug_assertions)]
 mod debug;
+mod notify;
+mod panel;
 mod paths;
 mod schedule;
 mod store;
 
 use schedule::{DueTracker, Schedule};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicI64, Ordering};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{Emitter, Manager, Position, Rect, Runtime};
 
@@ -31,13 +34,18 @@ fn set_schedule<R: Runtime>(app: &tauri::AppHandle<R>, schedule: Option<Schedule
     }
 }
 
+// フォーカスを失って閉じた時刻。トレイのクリックでもまずフォーカスが外れるので、
+// 直後のクリックで開き直さないために使う。
+static POPOVER_BLUR_HIDDEN_AT: AtomicI64 = AtomicI64::new(0);
+
 fn toggle_popover<R: Runtime>(app: &tauri::AppHandle<R>, rect: Option<Rect>) {
     let Some(window) = app.get_webview_window("popover") else {
         return;
     };
+    let just_hidden = chrono_millis() - POPOVER_BLUR_HIDDEN_AT.load(Ordering::Relaxed) < 300;
     if window.is_visible().unwrap_or(false) {
         let _ = window.hide();
-    } else {
+    } else if !just_hidden {
         // トレイの rect は物理ピクセルなので、ウィンドウ幅も倍率込みの物理幅で引く。
         let width = window.outer_size().map(|s| s.width as i32).unwrap_or(320);
         let position = rect
@@ -82,11 +90,20 @@ fn time_scale() -> f64 {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder =
-        tauri::Builder::default().plugin(tauri_plugin_single_instance::init(|_, _, _| {}));
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
+        .plugin(tauri_plugin_notification::init());
     #[cfg(debug_assertions)]
     let builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
     builder
+        // メニューバーのポップオーバーとして、他のウィンドウやアプリへ移ったら閉じる。
+        // 開いたままだと、前面ウィンドウを出した時に全画面アプリのスペースから引き戻される。
+        .on_window_event(|window, event| {
+            if window.label() == "popover" && matches!(event, tauri::WindowEvent::Focused(false)) {
+                POPOVER_BLUR_HIDDEN_AT.store(chrono_millis(), Ordering::Relaxed);
+                let _ = window.hide();
+            }
+        })
         .manage(TrayTitle(Mutex::new("pomo".into())))
         .manage(ActiveSchedule(Mutex::new(None)))
         .manage(store::StateStore::new(paths::data_dir()))
@@ -94,9 +111,11 @@ pub fn run() {
             store::append_record,
             store::save_state,
             store::load_state,
-            time_scale
+            time_scale,
+            panel::hide_front
         ])
         .setup(|app| {
+            panel::configure(app.handle());
             #[cfg(target_os = "macos")]
             app.handle()
                 .set_activation_policy(tauri::ActivationPolicy::Accessory)?;
@@ -140,6 +159,10 @@ pub fn run() {
                     let now = chrono_millis();
                     set_title(&handle, schedule::format_title(schedule.as_ref(), now));
                     if due.should_fire(schedule.as_ref(), now) {
+                        if let Some(s) = schedule.as_ref() {
+                            panel::show_front(&handle);
+                            notify::phase_due(&handle, &s.kind);
+                        }
                         let _ = handle.emit("phase-due", ());
                     }
                     // 予定時刻と同じ秒の位相の少し後に起きる。位相がずれると、表示の秒が飛んだり重なったりする。

@@ -51,9 +51,18 @@ impl StateStore {
         app: AppHandle,
         state: serde_json::Value,
         schedule: Option<Schedule>,
+        base_revision: Option<u64>,
     ) -> Result<u64, String> {
         // 版番号の採番からファイルの置き換えまでを 1 つのロックで行い、保存の順序を固定する。
         let mut latest = self.latest.lock().map_err(|e| e.to_string())?;
+        // 2 つのウィンドウが別々に状態全体を保存するので、元にした版が古い保存は拒否する。
+        // 受け入れると、もう一方のウィンドウの変更を黙って上書きして消してしまう。
+        if base_revision.is_some_and(|base| base != latest.revision) {
+            return Err(format!(
+                "conflict: base {base_revision:?}, current {}",
+                latest.revision
+            ));
+        }
         let persisted = Persisted {
             app: state,
             schedule,
@@ -88,8 +97,9 @@ pub fn save_state(
     store: tauri::State<'_, StateStore>,
     state: serde_json::Value,
     schedule: Option<Schedule>,
+    base_revision: Option<u64>,
 ) -> Result<u64, String> {
-    store.save(app, state, schedule)
+    store.save(app, state, schedule, base_revision)
 }
 #[tauri::command]
 pub fn load_state(store: tauri::State<'_, StateStore>) -> Result<Persisted, String> {

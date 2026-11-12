@@ -22,6 +22,10 @@ tauri-plugin-wdio-webdriver = "1.5.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 unicode-width = "0.2"
+tauri-plugin-notification = "2.8.1"
+objc2-app-kit = { version = "0.3", features = ["NSWindow", "NSResponder", "NSScreen", "NSEvent"] }
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSGeometry"] }
 
 
 [profile.release]

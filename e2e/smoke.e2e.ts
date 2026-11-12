@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { browser } from "@wdio/globals";
+import { switchTo } from "./windows";
 
 declare function describe(title: string, fn: () => void): void;
 declare function it(title: string, fn: () => Promise<void>): void;
@@ -10,6 +11,7 @@ declare function it(title: string, fn: () => Promise<void>): void;
 describe("pomo boot", () => {
   it("shows the idle popover and exposes the tray title", async () => {
     execFileSync("scripts/pomoctl", ["tray-click"], { encoding: "utf8" });
+    await switchTo("popover");
     assert((await browser.$("body").getText()).includes("待機中"));
     assert.equal(
       execFileSync("scripts/pomoctl", ["title"], { encoding: "utf8" }).trim(),
