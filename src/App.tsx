@@ -94,6 +94,8 @@ function App() {
       .catch((error) => console.error(error))
       .finally(() => {
         pending.current--;
+        // 列が空になったら正本を読み直す。保存の失敗や、保存待ちの間に捨てた他のウィンドウの更新をここで取り込む。
+        if (pending.current === 0) void refresh();
       });
   };
   const timer = appState.timer;
