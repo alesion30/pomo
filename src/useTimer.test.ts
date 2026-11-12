@@ -8,6 +8,8 @@ const ipc = vi.hoisted(() => ({
   loads: [] as ((p: unknown) => void)[],
   saves: [] as { title: string; base: number }[],
   revision: 7,
+  hold: false,
+  held: null as null | (() => void),
   listener: null as null | ((e: { payload: unknown }) => void),
 }));
 
@@ -21,7 +23,11 @@ vi.mock("@tauri-apps/api/core", () => ({
       if (base !== ipc.revision) return Promise.reject(new Error("conflict"));
       ipc.revision += 1;
       ipc.saves.push({ title: (args.state as AppState).draft.title, base });
-      return Promise.resolve(ipc.revision);
+      const saved = ipc.revision;
+      if (!ipc.hold) return Promise.resolve(saved);
+      return new Promise((resolve) => {
+        ipc.held = () => resolve(saved);
+      });
     }
     return Promise.resolve(null);
   },
@@ -49,6 +55,8 @@ describe("useTimer while a load is in flight", () => {
     ipc.loads = [];
     ipc.saves = [];
     ipc.revision = 7;
+    ipc.hold = false;
+    ipc.held = null;
   });
   afterEach(cleanup);
 
@@ -86,5 +94,29 @@ describe("useTimer while a load is in flight", () => {
     await act(async () => ipc.loads[1](persisted("", 7)));
     await flush();
     expect(ipc.saves.map((s) => s.title)).toEqual(["a", "ab"]);
+  });
+
+  it("does not replay against a load it ignored while its own save was pending", async () => {
+    const { result } = renderHook(() => useTimer());
+    await act(async () => ipc.loads[0](persisted("", 7)));
+    await flush();
+    ipc.hold = true;
+    act(() => result.current.dispatch({ type: "editDraft", title: "x" }));
+    await flush();
+    ipc.hold = false;
+    ipc.revision = 9;
+    act(() => window.dispatchEvent(new Event("focus")));
+    act(() => result.current.dispatch({ type: "editDraft", title: "xa" }));
+    act(() => result.current.dispatch({ type: "editDraft", title: "xab" }));
+    await act(async () => ipc.loads[1](persisted("other", 9)));
+    await flush();
+    expect(ipc.saves.map((s) => s.title)).toEqual(["x"]);
+    await act(async () => ipc.held?.());
+    await flush();
+    await act(async () => ipc.loads[2](persisted("other", 9)));
+    await flush();
+    expect(ipc.saves.map((s) => s.title)).toEqual(["x", "xa", "xab"]);
+    expect(ipc.saves[1].base).toBe(9);
+    expect(result.current.appState.draft.title).toBe("xab");
   });
 });
