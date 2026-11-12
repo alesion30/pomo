@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { initialState, transition, view } from "./timer";
+import { type AppState, initialState, transition, view } from "./timer";
 
 describe("timer transitions", () => {
   it("offers a long break after four completed focus sessions", () => {
@@ -43,6 +43,57 @@ describe("timer transitions", () => {
 });
 
 describe("draft and time scale", () => {
+  it("starts the offered short break after an early break-now", () => {
+    const app = transition(initialState, { type: "startFocus" }, 0, 60).state;
+    const result = transition(app, { type: "startBreak" }, 1_000, 60);
+    expect(result.record).toMatchObject({
+      outcome: "ended_early",
+      kind: "focus",
+    });
+    expect(result.state.timer).toMatchObject({
+      phase: "break",
+      kind: "short_break",
+    });
+    expect(result.state.streak.completed).toBe(0);
+  });
+  it("starts a break after completed break-now and chooses long on the fourth", () => {
+    let app: AppState = {
+      ...initialState,
+      streak: { completed: 3, lastPhaseEndedAt: null },
+    };
+    app = transition(app, { type: "startFocus" }, 0, 60).state;
+    const result = transition(app, { type: "startBreak" }, 300_000, 60);
+    expect(result.record).toMatchObject({ outcome: "completed" });
+    expect(result.state.streak.completed).toBe(4);
+    expect(result.state.timer).toMatchObject({
+      phase: "break",
+      kind: "long_break",
+    });
+  });
+  it("discards focus without recording or changing streak, and retains title/category", () => {
+    let app = transition(
+      initialState,
+      { type: "editDraft", title: "Task", category: "Work", notes: "note" },
+      0,
+    ).state;
+    app = transition(app, { type: "startFocus" }, 10_000).state;
+    app.streak = { completed: 2, lastPhaseEndedAt: 9_000 };
+    const result = transition(app, { type: "discardFocus" }, 11_000);
+    expect(result.record).toBeNull();
+    expect(result.state.timer).toEqual({ phase: "idle" });
+    expect(result.state.streak).toEqual(app.streak);
+    expect(result.state.draft).toEqual({
+      title: "Task",
+      category: "Work",
+      notes: "",
+    });
+  });
+  it("ignores discardFocus outside focus", () => {
+    expect(transition(initialState, { type: "discardFocus" }, 0).state).toEqual(
+      initialState,
+    );
+  });
+
   it("stores only draft fields on editDraft", () => {
     const { state } = transition(
       initialState,

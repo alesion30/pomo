@@ -22,4 +22,38 @@ describe("timer", () => {
         (await browser.$('[data-testid="phase"]').getText()) === "待機中",
     );
   });
+  it("starts a break immediately from focus", async () => {
+    execFileSync("scripts/pomoctl", ["tray-click"]);
+    await browser.$('[data-testid="start"]').click();
+    await browser.waitUntil(
+      async () =>
+        (await browser.$('[data-testid="phase"]').getText()) === "集中",
+    );
+    await browser.$('[data-testid="break-now"]').click();
+    await browser.waitUntil(
+      async () =>
+        (await browser.$('[data-testid="phase"]').getText()) === "短い休憩",
+    );
+    await browser.$('[data-testid="end"]').click();
+  });
+  it("discards focus after confirmation", async () => {
+    execFileSync("scripts/pomoctl", ["tray-click"]);
+    const title = await browser.$('[data-testid="title-input"]');
+    await title.setValue("Discarded task");
+    await browser.$('[data-testid="start"]').click();
+    await browser.waitUntil(
+      async () =>
+        (await browser.$('[data-testid="phase"]').getText()) === "集中",
+    );
+    await browser.$('[data-testid="discard"]').click();
+    await browser.$('[data-testid="discard-confirm-ok"]').click();
+    await browser.waitUntil(
+      async () =>
+        (await browser.$('[data-testid="phase"]').getText()) === "待機中",
+    );
+    assert.equal(
+      await browser.$('[data-testid="title-input"]').getValue(),
+      "Discarded task",
+    );
+  });
 });

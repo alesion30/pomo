@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { DiscardConfirm } from "../DiscardConfirm";
 import { type AppState, type Command, view } from "../domain/timer";
 import { filterCategories } from "./categories";
 import { UpdateButton } from "./UpdateButton";
@@ -19,6 +20,7 @@ export function Popover({
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const timer = appState.timer;
   const phase =
     timer.phase === "idle"
@@ -90,6 +92,15 @@ export function Popover({
   const suggestions = filterCategories(categories, appState.draft.category);
   return (
     <main className="popover">
+      {confirmDiscard && (
+        <DiscardConfirm
+          onConfirm={() => {
+            setConfirmDiscard(false);
+            dispatch({ type: "discardFocus" });
+          }}
+          onCancel={() => setConfirmDiscard(false)}
+        />
+      )}
       <div data-testid="phase" className="phase">
         {phase}
       </div>
@@ -142,6 +153,24 @@ export function Popover({
         />
       </label>
       <div className="controls">
+        {timer.phase === "focus" && (
+          <>
+            <button
+              type="button"
+              data-testid="break-now"
+              onClick={() => dispatch({ type: "startBreak" })}
+            >
+              休憩
+            </button>
+            <button
+              type="button"
+              data-testid="discard"
+              onClick={() => setConfirmDiscard(true)}
+            >
+              破棄
+            </button>
+          </>
+        )}
         <button
           type="button"
           data-testid="start"

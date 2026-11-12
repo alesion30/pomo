@@ -14,6 +14,7 @@ export type AppState = {
 export type Command =
   | { type: "startFocus" }
   | { type: "endFocus" }
+  | { type: "discardFocus" }
   | { type: "startBreak" }
   | { type: "skipBreak" }
   | { type: "endBreak" }
@@ -83,6 +84,17 @@ export function transition(
         }
       : { phase: "idle" };
     state.draft.title = "";
+    state.draft.notes = "";
+  }
+  if (command.type === "startBreak" && state.timer.phase === "focus") {
+    const ended = transition(state, { type: "endFocus" }, now, scale);
+    if (ended.state.timer.phase === "idle" && !ended.state.timer.offer)
+      ended.state.timer.offer = "short_break";
+    const started = transition(ended.state, { type: "startBreak" }, now, scale);
+    return { ...started, record: ended.record };
+  }
+  if (command.type === "discardFocus" && state.timer.phase === "focus") {
+    state.timer = { phase: "idle" };
     state.draft.notes = "";
   }
   if (
