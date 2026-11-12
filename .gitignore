@@ -9,3 +9,6 @@ src-tauri/gen/
 *.p12
 .env
 .env.*
+.cargo-home/
+e2e/out/
+*.tsbuildinfo

@@ -4,10 +4,22 @@
 
 ## 開発の準備
 
-コミット前に gitleaks で秘密情報を検査します。clone したら一度だけ次を実行してください。
+`gitleaks` を PATH に置いてから、依存を入れます。`pnpm install` の `prepare` で lefthook の pre-commit フックが入り、コミット前に gitleaks が秘密情報を検査します。
 
 ```sh
-lefthook install
+pnpm install
+pnpm tauri dev
 ```
 
-`gitleaks` と `lefthook` が PATH に必要です。
+## 動作確認
+
+デバッグ版をビルドしてから、E2E テストを動かします。
+
+```sh
+pnpm tauri build --debug --no-bundle
+pnpm e2e
+```
+
+デバッグ版だけが `<データディレクトリ>/debug.sock` に制御ソケットを開きます。`scripts/pomoctl tray-click`、`scripts/pomoctl title`、`scripts/pomoctl key-window` で、トレイのクリック、メニューバーの文字列、キーウィンドウを扱えます。macOS のソケットのパスは 104 バイトまでなので、`XDG_DATA_HOME` には短いパスを使ってください。
+
+`swift scripts/onscreen.swift pomo` は、画面に出ている pomo のウィンドウを JSON で出します。
