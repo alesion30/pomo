@@ -4,13 +4,16 @@ on:
   push:
     tags: ["v*"]
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   release:
     runs-on: macos-latest
+    permissions:
+      contents: write
     steps:
+      # 版はタグから決めるので、SemVer でないタグは署名鍵を渡す前に止める。
+      - run: '[[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]'
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -31,6 +34,7 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: pomo ${{ github.ref_name }}
           releaseDraft: false
-          prerelease: false
+          # -rc.1 などはプレリリースにして、releases/latest を見る自動更新の対象から外す。
+          prerelease: ${{ contains(github.ref_name, '-') }}
           uploadUpdaterJson: true
           args: --target aarch64-apple-darwin
