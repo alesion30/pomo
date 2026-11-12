@@ -63,9 +63,10 @@ export function transition(
     record = makeRecord({
       kind: "focus",
       ...state.draft,
-      title: state.draft.title || null,
-      category: state.draft.category || null,
-      notes: state.draft.notes || null,
+      // spec では null は休憩の行だけ。集中の行は空のままでも文字列で残す。
+      title: state.draft.title,
+      category: state.draft.category,
+      notes: state.draft.notes,
       startedAt: phase.startedAt,
       endedAt: now,
       planned_sec: phase.plannedSec,
