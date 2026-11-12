@@ -111,6 +111,7 @@ pub fn run() {
             store::append_record,
             store::save_state,
             store::load_state,
+            store::recent_categories,
             time_scale,
             panel::hide_front
         ])

@@ -99,8 +99,15 @@ export function useTimer() {
             baseRevision: revision.current,
           });
           revision.current = saved;
-          if (result.record)
+          if (result.record) {
             await invoke("append_record", { record: result.record });
+            const categories = await invoke<string[]>("recent_categories");
+            window.dispatchEvent(
+              new CustomEvent("recent-categories-updated", {
+                detail: categories,
+              }),
+            );
+          }
         })
         .catch((error) => console.error(error))
         .finally(() => {
