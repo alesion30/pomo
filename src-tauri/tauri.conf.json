@@ -14,8 +14,10 @@
       {
         "title": "pomo",
         "label": "main",
-        "width": 360,
-        "height": 520,
+        "width": 680,
+        "height": 400,
+        "backgroundColor": "#0f1013",
+        "theme": "Dark",
         "visible": false,
         "decorations": true,
         "resizable": false

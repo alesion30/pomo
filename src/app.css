@@ -1,0 +1,647 @@
+/* 色はこのブロックだけで決める。ダーク専用で、OS の外観設定は見ない。 */
+:root {
+  color-scheme: dark;
+
+  --ink-900: #0f1013;
+  --ink-800: #17181c;
+  --ink-700: #23252b;
+  --ink-600: #2f323a;
+  --ink-line: #2a2d34;
+  --paper: #eeeff1;
+  --paper-dim: #a5a9b1;
+  --paper-faint: #8b9099;
+
+  --tomato: #ff6a55;
+  --tomato-ink: #2a0a05;
+  --tomato-deep: #94301f;
+  --tomato-dusk: #45170f;
+  --leaf: #45d19b;
+  --leaf-deep: #146248;
+  --leaf-dusk: #0c3329;
+
+  --cream: #fff6f2;
+  --cream-ink: #1b1c20;
+  --on-wash: #ffffff;
+  --on-wash-dim: rgb(255 255 255 / 0.82);
+  --wash-shade: rgb(0 0 0 / 0.3);
+  --wash-control: rgb(0 0 0 / 0.26);
+  --wash-control-hover: rgb(0 0 0 / 0.4);
+  --wash-line: rgb(255 255 255 / 0.12);
+  --scrim: rgb(6 7 9 / 0.7);
+  --shadow: rgb(0 0 0 / 0.5);
+
+  /* 画面ごとに差し替える役割別の色。既定は待機。 */
+  --bg: var(--ink-900);
+  --card: var(--ink-800);
+  --control: var(--ink-700);
+  --control-hover: var(--ink-600);
+  --line: var(--ink-line);
+  --text: var(--paper);
+  --text-dim: var(--paper-dim);
+  --text-faint: var(--paper-faint);
+  --accent: var(--paper-faint);
+  --ring: var(--ink-700);
+  --primary: var(--tomato);
+  --on-primary: var(--tomato-ink);
+}
+
+[data-tone="focus"] {
+  --accent: var(--tomato);
+  --ring: var(--tomato);
+  --bg:
+    radial-gradient(
+      380px 380px at 140px 50%,
+      color-mix(in srgb, var(--tomato) 13%, transparent),
+      transparent 72%
+    ),
+    var(--ink-900);
+}
+
+[data-tone="break"] {
+  --accent: var(--leaf);
+  --ring: var(--leaf);
+  --bg:
+    radial-gradient(
+      380px 380px at 140px 50%,
+      color-mix(in srgb, var(--leaf) 11%, transparent),
+      transparent 72%
+    ),
+    var(--ink-900);
+}
+
+/* 予定時間に達した画面は、進行中の淡い光ではなく面全体の色で知らせる。 */
+[data-tone="focus-due"],
+[data-tone="break-due"] {
+  --card: var(--wash-shade);
+  --control: var(--wash-control);
+  --control-hover: var(--wash-control-hover);
+  --line: var(--wash-line);
+  --text: var(--on-wash);
+  --text-dim: var(--on-wash-dim);
+  --text-faint: var(--on-wash-dim);
+  --accent: var(--on-wash);
+  --ring: var(--on-wash);
+  --primary: var(--cream);
+  --on-primary: var(--cream-ink);
+}
+
+[data-tone="focus-due"] {
+  --bg: linear-gradient(155deg, var(--tomato-deep), var(--tomato-dusk));
+}
+
+[data-tone="break-due"] {
+  --bg: linear-gradient(155deg, var(--leaf-deep), var(--leaf-dusk));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--ink-900);
+  color: var(--paper);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Hiragino Sans",
+    "Hiragino Kaku Gothic ProN", sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: default;
+}
+
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.screen {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.pane-time {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  justify-items: center;
+  align-items: center;
+  padding: 16px 20px 18px;
+}
+
+.phase {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--text);
+}
+
+.phase::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.dial {
+  position: relative;
+  width: 204px;
+  aspect-ratio: 1;
+}
+
+.dial > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.dial-track,
+.dial-lit {
+  fill: none;
+  stroke-width: 6;
+}
+
+.dial-track {
+  stroke: var(--control);
+}
+
+.dial-lit {
+  stroke: var(--ring);
+  stroke-linecap: round;
+  transition:
+    stroke-dasharray 1s linear,
+    stroke-dashoffset 1s linear;
+}
+
+/* 予定時間を過ぎている間は、リングをゆっくり明滅させて動いていることを示す。 */
+[data-tone$="-due"] .dial-lit {
+  animation: breathe 2.8s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.dial-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.clock {
+  font-family:
+    ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 46px;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.clock[data-length="6"] {
+  font-size: 42px;
+}
+
+.clock[data-length="7"] {
+  font-size: 35px;
+}
+
+[data-tone="idle"] .clock {
+  font-size: 40px;
+  font-weight: 400;
+  color: var(--text-faint);
+}
+
+.clock-caption {
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.dial-check {
+  width: 64px;
+  height: 64px;
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ±5 分。待機中も高さを取り、フェーズが変わってもダイヤルの位置を動かさない。 */
+.adjust {
+  display: flex;
+  gap: 8px;
+  height: 28px;
+}
+
+.adjust button {
+  height: 28px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--control);
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.adjust button:hover {
+  background: var(--control-hover);
+  color: var(--text);
+}
+
+.pane-note {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 12px 12px 0;
+}
+
+.card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.card.compact {
+  flex: none;
+}
+
+.card-label {
+  margin: 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.title-field,
+.notes {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  resize: none;
+  outline: none;
+}
+
+.title-field:hover,
+.notes:hover {
+  background: color-mix(in srgb, var(--control) 45%, transparent);
+}
+
+.title-field:focus,
+.notes:focus {
+  background: var(--control);
+}
+
+.title-field {
+  flex: none;
+  padding: 5px 8px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
+  /* 対応する WebView では内容に合わせて 1〜3 行に伸縮する。非対応なら rows の 2 行のまま。 */
+  field-sizing: content;
+  min-height: calc(1.45em + 10px);
+  max-height: calc(4.35em + 10px);
+}
+
+.category-row {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  /* 候補の数に上限がないので、2 行を超えた分は行の中だけで送る。 */
+  max-height: 62px;
+  overflow-y: auto;
+}
+
+.category-field,
+.suggestion {
+  height: 28px;
+  max-width: 100%;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 26px;
+}
+
+.category-field {
+  width: 148px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  background: var(--control);
+  outline: none;
+}
+
+/* 対応する WebView では、長いカテゴリも切れないよう入力に合わせて幅を広げる。 */
+@supports (field-sizing: content) {
+  .category-field {
+    width: auto;
+    min-width: 148px;
+    field-sizing: content;
+  }
+}
+
+.category-field:focus {
+  border-color: var(--accent);
+}
+
+.suggestion {
+  padding: 0 11px;
+  border: 1px dashed var(--text-faint);
+  background: transparent;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestion:hover {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.notes {
+  flex: 1;
+  min-height: 40px;
+  padding: 6px 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.session-title,
+.session-category {
+  flex: none;
+  margin: 0 8px;
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.session-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.session-category {
+  margin-top: -6px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.actions {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.button {
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--control);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.button:hover {
+  background: var(--control-hover);
+}
+
+.button.primary {
+  flex: 1;
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.button.primary:hover,
+.button.danger:hover {
+  filter: brightness(1.08);
+}
+
+.button.wide {
+  flex: 1;
+}
+
+.button.ghost {
+  padding: 0 10px;
+  background: transparent;
+  color: var(--text-dim);
+}
+
+.button.ghost:hover {
+  background: var(--control);
+  color: var(--tomato);
+}
+
+.button.danger {
+  background: var(--tomato);
+  color: var(--tomato-ink);
+}
+
+/* 休憩の提示だけが残った集中終了は、入力がないので 1 列に寄せる。 */
+.screen.solo {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.screen.solo .pane-time {
+  grid-template-rows: auto auto auto;
+  align-content: center;
+  row-gap: 18px;
+}
+
+.screen.solo .phase {
+  justify-self: center;
+}
+
+.screen.solo .dial {
+  width: 148px;
+}
+
+.screen.solo .actions {
+  width: 300px;
+}
+
+.update {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 2px;
+}
+
+.update button {
+  height: 26px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  /* 「開始」と並んでも主役を奪わないよう、塗りではなく淡い色面にする。 */
+  background: color-mix(in srgb, var(--tomato) 18%, transparent);
+  color: var(--tomato);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.update button:hover:enabled {
+  background: color-mix(in srgb, var(--tomato) 24%, transparent);
+}
+
+.update button:disabled {
+  background: var(--control);
+  color: var(--text-dim);
+}
+
+.update small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.alert {
+  flex: none;
+  max-height: 54px;
+  margin: 0;
+  padding: 0 4px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--tomato);
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* 確認ダイアログ。どの画面の上でも同じ色で出すため、役割別の色ではなく元の色を直接使う。 */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: var(--scrim);
+}
+
+.dialog {
+  width: 300px;
+  padding: 20px;
+  border: 1px solid var(--ink-600);
+  border-radius: 14px;
+  background: var(--ink-700);
+  color: var(--paper);
+  box-shadow: 0 18px 48px var(--shadow);
+}
+
+.dialog p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dialog small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--paper-dim);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.dialog .button {
+  background: var(--ink-600);
+  color: var(--paper);
+}
+
+.dialog .button:hover {
+  filter: brightness(1.12);
+}
+
+.dialog .button.danger {
+  background: var(--tomato);
+  color: var(--tomato-ink);
+}
+
+.dialog :focus-visible {
+  outline-color: var(--paper);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dial-lit {
+    transition: none;
+    animation: none;
+  }
+}
