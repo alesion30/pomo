@@ -46,7 +46,12 @@ pub fn present_due<R: tauri::Runtime>(app: &AppHandle<R>) {
             },
         );
     }
+    let handle = app.clone();
     let _ = app.run_on_main_thread(move || {
+        // Dock に出るアプリのウィンドウは、他のアプリの全画面スペースの上に出せない（実機で確かめた）。
+        // 前に出している間だけ Dock に出ないアプリにする。
+        #[cfg(target_os = "macos")]
+        let _ = handle.set_activation_policy(tauri::ActivationPolicy::Accessory);
         #[cfg(target_os = "macos")]
         if let Ok(ptr) = window.ns_window() {
             let ns_window = unsafe { &*(ptr as *const NSWindow) };
@@ -80,6 +85,8 @@ pub fn end_due<R: tauri::Runtime>(app: AppHandle<R>) {
             let _ = window.hide();
             let _ = handle.hide();
         }
+        #[cfg(target_os = "macos")]
+        let _ = handle.set_activation_policy(tauri::ActivationPolicy::Regular);
     });
 }
 
