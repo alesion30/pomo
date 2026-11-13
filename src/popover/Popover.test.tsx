@@ -21,14 +21,38 @@ describe("Popover focus actions", () => {
     ...structuredClone(initialState),
     timer: { phase: "focus" as const, startedAt: 0, plannedSec: 1500 },
   };
-  it("dispatches startBreak and confirms discard; cancel dispatches nothing", () => {
+  it("confirms break and end before the planned time; cancel dispatches nothing", () => {
     const dispatch = vi.fn();
     render(<Popover appState={focusState} now={0} dispatch={dispatch} />);
     fireEvent.click(screen.getByTestId("break-now"));
-    expect(dispatch).toHaveBeenCalledWith({ type: "startBreak" });
+    fireEvent.click(screen.getByTestId("break-cancel"));
+    fireEvent.click(screen.getByTestId("end"));
+    fireEvent.click(screen.getByTestId("end-cancel"));
+    expect(dispatch).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("break-now"));
+    fireEvent.click(screen.getByTestId("break-confirm-ok"));
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "startBreak" });
+    fireEvent.click(screen.getByTestId("end"));
+    fireEvent.click(screen.getByTestId("end-confirm-ok"));
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "endFocus" });
+  });
+  it("breaks and ends without confirmation after the planned time", () => {
+    const dispatch = vi.fn();
+    render(
+      <Popover appState={focusState} now={1_500_000} dispatch={dispatch} />,
+    );
+    fireEvent.click(screen.getByTestId("break-now"));
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "startBreak" });
+    fireEvent.click(screen.getByTestId("end"));
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "endFocus" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+  it("confirms discard; cancel dispatches nothing", () => {
+    const dispatch = vi.fn();
+    render(<Popover appState={focusState} now={0} dispatch={dispatch} />);
     fireEvent.click(screen.getByTestId("discard"));
     fireEvent.click(screen.getByTestId("discard-cancel"));
-    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(dispatch).not.toHaveBeenCalled();
     fireEvent.click(screen.getByTestId("discard"));
     fireEvent.click(screen.getByTestId("discard-confirm-ok"));
     expect(dispatch).toHaveBeenLastCalledWith({ type: "discardFocus" });

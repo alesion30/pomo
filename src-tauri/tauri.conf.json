@@ -20,7 +20,8 @@
         "theme": "Dark",
         "visible": false,
         "decorations": true,
-        "resizable": false
+        "resizable": false,
+        "alwaysOnTop": true
       }
     ],
     "security": {

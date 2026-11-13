@@ -62,7 +62,7 @@ pub fn format_title(schedule: Option<&Schedule>, now: i64) -> String {
             if label.is_empty() {
                 time
             } else {
-                format!("{time} {label}")
+                format!("{label} - {time}")
             }
         }
         _ => format!("☕ {}{time}", if now >= s.planned_end { "+" } else { "" }),
@@ -72,20 +72,26 @@ pub fn format_title(schedule: Option<&Schedule>, now: i64) -> String {
 #[derive(Default)]
 pub struct DueTracker {
     current: Option<i64>,
+    planned_end: Option<i64>,
     fired: bool,
 }
 impl DueTracker {
     pub fn should_fire(&mut self, schedule: Option<&Schedule>, now: i64) -> bool {
         let Some(s) = schedule else {
             self.current = None;
+            self.planned_end = None;
             self.fired = false;
             return false;
         };
         // 同じフェーズの中では、予定時刻が未来に戻った時だけ再び出せるようにする。
         if self.current != Some(s.started_at) {
             self.current = Some(s.started_at);
+            self.planned_end = None;
             self.fired = false;
         }
+        // ±5 分で予定時刻を動かして超過に入った時は、自分で切り上げたので前面化しない。
+        let moved = self.planned_end.is_some_and(|end| end != s.planned_end);
+        self.planned_end = Some(s.planned_end);
         if now < s.planned_end {
             self.fired = false;
             return false;
@@ -94,7 +100,7 @@ impl DueTracker {
             return false;
         }
         self.fired = true;
-        true
+        !moved
     }
 }
 
@@ -124,16 +130,46 @@ mod tests {
     fn formats_overtime() {
         assert_eq!(
             format_title(Some(&sample(ScheduleKind::Focus)), 244_000),
-            "+03:04 作業"
+            "作業 - +03:04"
         );
     }
     #[test]
     fn remaining_rounds_up_like_the_popover() {
         let s = sample(ScheduleKind::Focus);
-        assert_eq!(format_title(Some(&s), 0), "01:00 作業");
-        assert_eq!(format_title(Some(&s), 500), "01:00 作業");
-        assert_eq!(format_title(Some(&s), 1_000), "00:59 作業");
-        assert_eq!(format_title(Some(&s), 60_000), "+00:00 作業");
+        assert_eq!(format_title(Some(&s), 0), "作業 - 01:00");
+        assert_eq!(format_title(Some(&s), 500), "作業 - 01:00");
+        assert_eq!(format_title(Some(&s), 1_000), "作業 - 00:59");
+        assert_eq!(format_title(Some(&s), 60_000), "作業 - +00:00");
+    }
+    #[test]
+    fn shows_time_only_without_title_and_keeps_break_format() {
+        let mut s = sample(ScheduleKind::Focus);
+        s.label.clear();
+        assert_eq!(format_title(Some(&s), 0), "01:00");
+        assert_eq!(
+            format_title(Some(&sample(ScheduleKind::ShortBreak)), 0),
+            "☕ 01:00"
+        );
+    }
+    #[test]
+    fn adjusting_into_overtime_does_not_fire() {
+        let s = sample(ScheduleKind::Focus);
+        let mut d = DueTracker::default();
+        assert!(!d.should_fire(Some(&s), 30_000));
+        let mut cut = s.clone();
+        cut.planned_end = 30_000;
+        assert!(!d.should_fire(Some(&cut), 30_000));
+        assert!(!d.should_fire(Some(&cut), 31_000));
+        // 延ばして予定時刻が未来に戻れば、時間が進んで迎えた時にまた出す。
+        let mut extended = cut.clone();
+        extended.planned_end = 40_000;
+        assert!(!d.should_fire(Some(&extended), 32_000));
+        assert!(d.should_fire(Some(&extended), 40_000));
+    }
+    #[test]
+    fn fires_when_launched_already_overdue() {
+        let mut d = DueTracker::default();
+        assert!(d.should_fire(Some(&sample(ScheduleKind::Focus)), 90_000));
     }
     #[test]
     fn due_fires_once_and_rearms() {

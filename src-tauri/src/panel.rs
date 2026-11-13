@@ -108,7 +108,8 @@ pub fn end_due<R: tauri::Runtime>(app: AppHandle<R>) {
                 NSApplication::sharedApplication(mtm).hide(None);
             }
             ns_window.setCollectionBehavior(NSWindowCollectionBehavior::Default);
-            ns_window.setLevel(0);
+            // tauri.conf.json の alwaysOnTop に戻す。tao は最前面に 5 を使い、is_always_on_top も 5 で判定する。
+            ns_window.setLevel(5);
             if let Some(mtm) = objc2::MainThreadMarker::new() {
                 NSApplication::sharedApplication(mtm)
                     .setActivationPolicy(NSApplicationActivationPolicy::Regular);

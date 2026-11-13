@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DiscardConfirm } from "../DiscardConfirm";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { type AppState, type Command, view } from "../domain/timer";
 import { Clock } from "../ui/Clock";
 import { Dial } from "../ui/Dial";
@@ -22,7 +22,9 @@ export function Popover({
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [confirming, setConfirming] = useState<keyof typeof confirms | null>(
+    null,
+  );
   const timer = appState.timer;
   const phase =
     timer.phase === "idle"
@@ -33,6 +35,10 @@ export function Popover({
           ? "短い休憩"
           : "長い休憩";
   const time = view(timer, now);
+  // 予定時間前の休憩と終了は、この集中を回数に数えないので確かめる。
+  const early = timer.phase === "focus" && time.remainingSec > 0;
+  const confirmIfEarly = (name: "break" | "end") =>
+    early ? setConfirming(name) : dispatch(confirms[name].command);
   // 取得は非同期で並ぶので、後から届いた古い結果で上書きしない。
   const request = useRef(0);
   const refreshCategories = useCallback(() => {
@@ -92,13 +98,15 @@ export function Popover({
   const suggestions = filterCategories(categories, appState.draft.category);
   return (
     <main className="screen" data-tone={timer.phase}>
-      {confirmDiscard && (
-        <DiscardConfirm
+      {confirming && (
+        <ConfirmDialog
+          name={confirming}
+          {...confirms[confirming]}
           onConfirm={() => {
-            setConfirmDiscard(false);
-            dispatch({ type: "discardFocus" });
+            setConfirming(null);
+            dispatch(confirms[confirming].command);
           }}
-          onCancel={() => setConfirmDiscard(false)}
+          onCancel={() => setConfirming(null)}
         />
       )}
       <div className="pane-time">
@@ -210,7 +218,7 @@ export function Popover({
                 type="button"
                 data-testid="break-now"
                 className="button wide"
-                onClick={() => dispatch({ type: "startBreak" })}
+                onClick={() => confirmIfEarly("break")}
               >
                 休憩
               </button>
@@ -221,9 +229,9 @@ export function Popover({
                 data-testid="end"
                 className="button wide"
                 onClick={() =>
-                  dispatch({
-                    type: timer.phase === "break" ? "endBreak" : "endFocus",
-                  })
+                  timer.phase === "break"
+                    ? dispatch({ type: "endBreak" })
+                    : confirmIfEarly("end")
                 }
               >
                 {timer.phase === "break" ? "休憩を終了" : "終了"}
@@ -234,7 +242,7 @@ export function Popover({
                 type="button"
                 data-testid="discard"
                 className="button ghost"
-                onClick={() => setConfirmDiscard(true)}
+                onClick={() => setConfirming("discard")}
               >
                 破棄
               </button>
@@ -256,3 +264,27 @@ export function Popover({
     </main>
   );
 }
+
+const confirms = {
+  discard: {
+    message: "集中を破棄しますか？",
+    detail: "この集中は記録に残りません。",
+    okLabel: "破棄する",
+    command: { type: "discardFocus" },
+  },
+  break: {
+    message: "休憩に入りますか？",
+    detail: "予定時間の前なので、この集中は回数に数えません。",
+    okLabel: "休憩する",
+    command: { type: "startBreak" },
+  },
+  end: {
+    message: "集中を終了しますか？",
+    detail: "予定時間の前なので、この集中は回数に数えません。",
+    okLabel: "終了する",
+    command: { type: "endFocus" },
+  },
+} satisfies Record<
+  string,
+  { message: string; detail: string; okLabel: string; command: Command }
+>;

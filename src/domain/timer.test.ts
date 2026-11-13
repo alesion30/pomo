@@ -40,6 +40,31 @@ describe("timer transitions", () => {
     app = transition(app, { type: "adjust", deltaSec: -300 }, 0, 60).state;
     expect(app.timer).toMatchObject({ phase: "focus", plannedSec: 5 });
   });
+  it("jumps to overtime when less than the adjust step remains and counts as completed", () => {
+    let app = transition(initialState, { type: "startFocus" }, 0, 60).state;
+    app = transition(app, { type: "adjust", deltaSec: -300 }, 22_400, 60).state;
+    expect(app.timer).toMatchObject({ phase: "focus", plannedSec: 22 });
+    expect(view(app.timer, 22_400)).toEqual({
+      remainingSec: 0,
+      overtimeSec: 0,
+    });
+    const ended = transition(app, { type: "endFocus" }, 23_000, 60);
+    expect(ended.record).toMatchObject({ outcome: "completed" });
+    expect(ended.state.streak.completed).toBe(1);
+  });
+  it("jumps a break to overtime when less than the adjust step remains", () => {
+    const app: AppState = {
+      ...structuredClone(initialState),
+      timer: {
+        phase: "break",
+        kind: "short_break",
+        startedAt: 0,
+        plannedSec: 5,
+      },
+    };
+    const next = transition(app, { type: "adjust", deltaSec: -300 }, 2_000, 60);
+    expect(next.state.timer).toMatchObject({ plannedSec: 2 });
+  });
 });
 
 describe("draft and time scale", () => {

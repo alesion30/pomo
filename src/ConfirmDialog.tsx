@@ -1,7 +1,15 @@
-export function DiscardConfirm({
+export function ConfirmDialog({
+  name,
+  message,
+  detail,
+  okLabel,
   onConfirm,
   onCancel,
 }: {
+  name: string;
+  message: string;
+  detail: string;
+  okLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -9,17 +17,17 @@ export function DiscardConfirm({
     <div className="scrim">
       <section
         className="dialog"
-        data-testid="discard-confirm"
+        data-testid={`${name}-confirm`}
         role="dialog"
         aria-modal="true"
       >
-        <p>集中を破棄しますか？</p>
-        <small>この集中は記録に残りません。</small>
+        <p>{message}</p>
+        <small>{detail}</small>
         <div className="dialog-actions">
           <button
             type="button"
             className="button"
-            data-testid="discard-cancel"
+            data-testid={`${name}-cancel`}
             onClick={onCancel}
           >
             キャンセル
@@ -27,10 +35,10 @@ export function DiscardConfirm({
           <button
             type="button"
             className="button danger"
-            data-testid="discard-confirm-ok"
+            data-testid={`${name}-confirm-ok`}
             onClick={onConfirm}
           >
-            破棄する
+            {okLabel}
           </button>
         </div>
       </section>
