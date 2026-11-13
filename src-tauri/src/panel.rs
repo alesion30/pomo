@@ -55,6 +55,18 @@ pub fn present_due<R: tauri::Runtime>(app: &AppHandle<R>) {
         #[cfg(target_os = "macos")]
         if let Ok(ptr) = window.ns_window() {
             let ns_window = unsafe { &*(ptr as *const NSWindow) };
+            // 別のスペースにあって見えていなかったウィンドウは、閉じていたのと同じに扱う。
+            // 表示に戻すと、区切りを抜けた時に全画面アプリからそのスペースへ切り替わってしまう（実機で確かめた）。
+            if !ns_window.isOnActiveSpace()
+                && let Some(restore) = handle
+                    .state::<Mutex<DuePresentation>>()
+                    .lock()
+                    .unwrap()
+                    .restore
+                    .as_mut()
+            {
+                restore.was_visible = false;
+            }
             ns_window.setCollectionBehavior(behavior_flags());
             ns_window.setLevel(25);
         }
@@ -77,13 +89,21 @@ pub fn end_due<R: tauri::Runtime>(app: AppHandle<R>) {
         #[cfg(target_os = "macos")]
         if let Ok(ptr) = window.ns_window() {
             let ns_window = unsafe { &*(ptr as *const NSWindow) };
+            // 全スペースの設定を外す前に隠す。前面のまま外すと、全画面アプリからウィンドウのあるスペースへ切り替わる（実機で確かめた）。
+            // Tauri の hide は後から実行されるので、AppKit を直接呼ぶ。
+            if !restore.was_visible
+                && let Some(mtm) = objc2::MainThreadMarker::new()
+            {
+                ns_window.orderOut(None);
+                objc2_app_kit::NSApplication::sharedApplication(mtm).hide(None);
+            }
             ns_window.setCollectionBehavior(NSWindowCollectionBehavior::Default);
             ns_window.setLevel(0);
         }
         let _ = window.set_position(tauri::Position::Logical(restore.position));
+        #[cfg(not(target_os = "macos"))]
         if !restore.was_visible {
             let _ = window.hide();
-            let _ = handle.hide();
         }
         #[cfg(target_os = "macos")]
         let _ = handle.set_activation_policy(tauri::ActivationPolicy::Regular);
