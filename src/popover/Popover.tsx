@@ -148,6 +148,7 @@ export function Popover({
       </div>
       <div className="pane-note">
         <div className="card">
+          {timer.phase === "break" && <p className="card-label">次の集中</p>}
           <TitleField
             testId="title-input"
             value={appState.draft.title}
@@ -174,14 +175,16 @@ export function Popover({
               </button>
             ))}
           </div>
-          <textarea
-            className="notes"
-            data-testid="notes-input"
-            aria-label="振り返り"
-            value={appState.draft.notes}
-            onChange={(e) => edit("notes", e.target.value)}
-            placeholder="振り返り"
-          />
+          {timer.phase !== "break" && (
+            <textarea
+              className="notes"
+              data-testid="notes-input"
+              aria-label="振り返り"
+              value={appState.draft.notes}
+              onChange={(e) => edit("notes", e.target.value)}
+              placeholder="振り返り"
+            />
+          )}
           <div className="actions">
             {timer.phase === "idle" && (
               <button
@@ -223,19 +226,35 @@ export function Popover({
                 休憩
               </button>
             )}
-            {timer.phase !== "idle" && (
+            {timer.phase === "focus" && (
               <button
                 type="button"
                 data-testid="end"
                 className="button wide"
-                onClick={() =>
-                  timer.phase === "break"
-                    ? dispatch({ type: "endBreak" })
-                    : confirmIfEarly("end")
-                }
+                onClick={() => confirmIfEarly("end")}
               >
-                {timer.phase === "break" ? "休憩を終了" : "終了"}
+                終了
               </button>
+            )}
+            {timer.phase === "break" && (
+              <>
+                <button
+                  type="button"
+                  data-testid="start-focus"
+                  className="button primary"
+                  onClick={() => dispatch({ type: "startFocus" })}
+                >
+                  集中を開始
+                </button>
+                <button
+                  type="button"
+                  data-testid="discard-break"
+                  className="button ghost"
+                  onClick={() => setConfirming("discard-break")}
+                >
+                  休憩を破棄
+                </button>
+              </>
             )}
             {timer.phase === "focus" && (
               <button
@@ -271,6 +290,12 @@ const confirms = {
     detail: "この集中は記録に残りません。",
     okLabel: "破棄する",
     command: { type: "discardFocus" },
+  },
+  "discard-break": {
+    message: "休憩を破棄しますか？",
+    detail: "この休憩は記録に残りません。",
+    okLabel: "破棄する",
+    command: { type: "discardBreak" },
   },
   break: {
     message: "休憩に入りますか？",
