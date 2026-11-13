@@ -1,3 +1,4 @@
+mod config;
 #[cfg(debug_assertions)]
 mod debug;
 mod notify;
@@ -15,12 +16,16 @@ use tauri::{Emitter, Manager, Runtime};
 fn install_menu<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
     use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
     let quit = MenuItem::with_id(app, "quit", "pomo を終了", true, Some("CmdOrCtrl+Q"))?;
+    let settings = MenuItem::with_id(app, "settings", "設定…", true, Some("CmdOrCtrl+,"))?;
     let app_menu = Submenu::with_items(
         app,
         "pomo",
         true,
         &[
             &PredefinedMenuItem::about(app, None, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &settings,
+            &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::services(app, None)?,
             &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::hide(app, None)?,
@@ -142,6 +147,10 @@ pub fn run() {
                 .build(),
         )
         .on_menu_event(|app, event| {
+            if event.id() == "settings" {
+                show_main(app);
+                let _ = app.emit("open-settings", ());
+            }
             if event.id() == "quit" {
                 if app.state::<ActiveSchedule>().0.lock().unwrap().is_some() {
                     show_main(app);
@@ -166,16 +175,20 @@ pub fn run() {
         .manage(Mutex::new(panel::DuePresentation::default()))
         .manage(store::StateStore::new(paths::data_dir()))
         .manage(update::AvailableUpdate(Mutex::new(None)))
+        .manage(config::ConfigStore::new(paths::config_path()))
         .invoke_handler(tauri::generate_handler![
             store::append_record,
             store::save_state,
             store::load_state,
-            store::recent_categories,
+            config::load_config,
+            config::save_categories,
+            config::reveal_config,
             time_scale,
             panel::end_due,
             quit_app,
             update::update_status,
-            update::apply_update
+            update::apply_update,
+            update::check_update
         ])
         .setup(|app| {
             install_menu(app.handle())?;
@@ -190,6 +203,8 @@ pub fn run() {
                 }
             }
             update::start_checks(app.handle().clone());
+            // 初回はここで空の config.json を作る。手で編集するファイルの場所を、起動しただけで見つけられるようにする。
+            app.state::<config::ConfigStore>().load();
             let data_dir = paths::data_dir();
             std::fs::create_dir_all(&data_dir)?;
             #[cfg(debug_assertions)]

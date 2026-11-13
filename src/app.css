@@ -374,13 +374,9 @@ textarea {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  /* 候補の数に上限がないので、2 行を超えた分は行の中だけで送る。 */
-  max-height: 62px;
-  overflow-y: auto;
 }
 
-.category-field,
-.suggestion {
+.category-field {
   height: 28px;
   max-width: 100%;
   border-radius: 999px;
@@ -396,6 +392,25 @@ textarea {
   outline: none;
 }
 
+/* 選択欄は OS の部品の見た目を消し、入力欄と同じ丸い形にそろえる。 */
+select.category-field {
+  appearance: none;
+  min-width: 148px;
+  width: auto;
+  max-width: 100%;
+  padding-right: 28px;
+  color: var(--text);
+  background:
+    linear-gradient(45deg, transparent 50%, var(--text-dim) 50%) right 15px
+    center / 5px 5px no-repeat,
+    linear-gradient(135deg, var(--text-dim) 50%, transparent 50%) right 10px
+    center / 5px 5px no-repeat,
+    var(--control);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* 対応する WebView では、長いカテゴリも切れないよう入力に合わせて幅を広げる。 */
 @supports (field-sizing: content) {
   .category-field {
@@ -407,22 +422,6 @@ textarea {
 
 .category-field:focus {
   border-color: var(--accent);
-}
-
-.suggestion {
-  padding: 0 11px;
-  border: 1px dashed var(--text-faint);
-  background: transparent;
-  color: var(--text-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.suggestion:hover {
-  border-style: solid;
-  border-color: var(--accent);
-  color: var(--text);
 }
 
 .notes {
@@ -644,4 +643,104 @@ textarea {
     transition: none;
     animation: none;
   }
+}
+
+/* フェーズ名の行。右端に設定などの小さな操作を置く。 */
+.pane-head {
+  justify-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.icon-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.icon-button:hover:enabled {
+  background: var(--control);
+  color: var(--text);
+}
+
+.icon-button:disabled {
+  opacity: 0.35;
+}
+
+.settings-side {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  justify-items: stretch;
+}
+
+.settings-about {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.settings-version {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-about small {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* カテゴリの数に上限がないので、一覧だけを送る。 */
+.category-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.category-item,
+.category-add {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.category-item + .category-item {
+  margin-top: 4px;
+}
+
+.category-name {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--control);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+}
+
+.category-name:focus {
+  border-color: var(--accent);
+}
+
+.category-add {
+  flex: none;
+  gap: 8px;
 }

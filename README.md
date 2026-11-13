@@ -31,11 +31,11 @@ pnpm tauri dev
 
 ## 動作確認
 
-デバッグ版をビルドしてから、E2E テストを動かします。
+デバッグ版をビルドしてから、E2E テストを動かします。E2E はセッションの記録と `config.json` を書き換えるので、`XDG_DATA_HOME` と `XDG_CONFIG_HOME` に使い捨てのディレクトリを渡します。
 
 ```sh
 pnpm tauri build --debug --no-bundle
-pnpm e2e
+XDG_DATA_HOME=/tmp/pomo-e2e/data XDG_CONFIG_HOME=/tmp/pomo-e2e/config pnpm e2e
 ```
 
 デバッグ版だけが `<データディレクトリ>/debug.sock` に制御ソケットを開きます。`scripts/pomoctl tray-click`、`scripts/pomoctl title`、`scripts/pomoctl key-window`、`scripts/pomoctl key-quit`、`scripts/pomoctl close` で、トレイのクリック、メニューバーの文字列、キーウィンドウ、メニュー経由の ⌘Q、赤ボタンでの閉じる操作を扱えます。macOS のソケットのパスは 104 バイトまでなので、`XDG_DATA_HOME` には短いパスを使ってください。

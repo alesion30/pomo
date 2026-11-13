@@ -1,24 +1,27 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { type AppState, type Command, view } from "../domain/timer";
+import { CategorySelect } from "../ui/CategorySelect";
 import { Clock } from "../ui/Clock";
 import { Dial } from "../ui/Dial";
 import { TitleField } from "../ui/TitleField";
-import { filterCategories } from "./categories";
 import { UpdateButton } from "./UpdateButton";
 
 export function Popover({
   appState,
   now,
   dispatch,
+  categories,
+  onOpenSettings,
 }: {
   appState: AppState;
   now: number;
   dispatch: (command: Command) => void;
+  categories: string[];
+  onOpenSettings(): void;
 }) {
-  const [categories, setCategories] = useState<string[]>([]);
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
@@ -39,31 +42,6 @@ export function Popover({
   const early = timer.phase === "focus" && time.remainingSec > 0;
   const confirmIfEarly = (name: "break" | "end") =>
     early ? setConfirming(name) : dispatch(confirms[name].command);
-  // 取得は非同期で並ぶので、後から届いた古い結果で上書きしない。
-  const request = useRef(0);
-  const refreshCategories = useCallback(() => {
-    const id = ++request.current;
-    void invoke<string[]>("recent_categories")
-      .then((list) => {
-        if (id === request.current) setCategories(list);
-      })
-      .catch(console.error);
-  }, []);
-  useEffect(() => {
-    refreshCategories();
-    const refresh = () => {
-      if (document.visibilityState === "visible") refreshCategories();
-    };
-    window.addEventListener("focus", refresh);
-    // 記録はどちらのウィンドウからも追記されるので、Rust からの通知で候補を取り直す。
-    const unlisten = listen("records-changed", refreshCategories);
-    document.addEventListener("visibilitychange", refresh);
-    return () => {
-      window.removeEventListener("focus", refresh);
-      void unlisten.then((off) => off());
-      document.removeEventListener("visibilitychange", refresh);
-    };
-  }, [refreshCategories]);
   const refreshUpdate = useCallback(() => {
     void invoke<string | null>("update_status")
       .then(setUpdateVersion)
@@ -95,7 +73,6 @@ export function Popover({
   }, [refreshUpdate]);
   const edit = (field: "title" | "category" | "notes", value: string) =>
     dispatch({ type: "editDraft", [field]: value });
-  const suggestions = filterCategories(categories, appState.draft.category);
   return (
     <main className="screen" data-tone={timer.phase}>
       {confirming && (
@@ -110,8 +87,20 @@ export function Popover({
         />
       )}
       <div className="pane-time">
-        <div data-testid="phase" className="phase">
-          {phase}
+        <div className="pane-head">
+          <div data-testid="phase" className="phase">
+            {phase}
+          </div>
+          <button
+            type="button"
+            className="icon-button"
+            data-testid="open-settings"
+            aria-label="設定"
+            title="設定（⌘,）"
+            onClick={onOpenSettings}
+          >
+            <GearIcon />
+          </button>
         </div>
         <Dial
           remaining={
@@ -155,25 +144,12 @@ export function Popover({
             onChange={(value) => edit("title", value)}
           />
           <div className="category-row">
-            <input
-              className="category-field"
-              data-testid="category-input"
-              aria-label="カテゴリ"
+            <CategorySelect
+              testId="category-input"
+              categories={categories}
               value={appState.draft.category}
-              onChange={(e) => edit("category", e.target.value)}
-              placeholder="カテゴリ"
+              onChange={(value) => edit("category", value)}
             />
-            {suggestions.map((category) => (
-              <button
-                className="suggestion"
-                data-testid="category-suggestion"
-                key={category}
-                type="button"
-                onClick={() => edit("category", category)}
-              >
-                {category}
-              </button>
-            ))}
           </div>
           {timer.phase !== "break" && (
             <textarea
@@ -313,3 +289,22 @@ const confirms = {
   string,
   { message: string; detail: string; okLabel: string; command: Command }
 >;
+
+function GearIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
