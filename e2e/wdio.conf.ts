@@ -12,7 +12,7 @@ export const config = {
       {
         appBinaryPath: app,
         driverProvider: "embedded",
-        windowLabel: "popover",
+        windowLabel: "main",
       },
     ],
   ],
@@ -20,4 +20,10 @@ export const config = {
     { browserName: "tauri", "tauri:options": { application: app } },
   ],
   mochaOpts: { timeout: 60_000 },
+  // tauri-service は明示的な切り替えがない間、操作のたびに IPC でフォーカスを確かめ、毎回 5 秒待つ。
+  // ウィンドウは main の 1 枚なので、最初に明示的に切り替えてこの確認を止める。
+  before: async () => {
+    const { browser } = await import("@wdio/globals");
+    await browser.switchToWindow("main");
+  },
 };

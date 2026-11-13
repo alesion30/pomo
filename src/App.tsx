@@ -1,9 +1,6 @@
-import { Popover } from "./popover/Popover";
-import { useTimer } from "./useTimer";
+import { Main } from "./MainWindow";
 
 function App() {
-  const timer = useTimer();
-  return <Popover {...timer} />;
+  return <Main />;
 }
-
 export default App;

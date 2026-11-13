@@ -9,9 +9,54 @@ mod update;
 
 use schedule::{DueTracker, Schedule};
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicI64, Ordering};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{Emitter, Manager, Position, Rect, Runtime};
+use tauri::{Emitter, Manager, Runtime};
+
+fn install_menu<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
+    use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
+    let quit = MenuItem::with_id(app, "quit", "pomo を終了", true, Some("CmdOrCtrl+Q"))?;
+    let app_menu = Submenu::with_items(
+        app,
+        "pomo",
+        true,
+        &[
+            &PredefinedMenuItem::about(app, None, None)?,
+            &PredefinedMenuItem::services(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::hide(app, None)?,
+            &PredefinedMenuItem::hide_others(app, None)?,
+            &PredefinedMenuItem::show_all(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &quit,
+        ],
+    )?;
+    let edit = Submenu::with_items(
+        app,
+        "Edit",
+        true,
+        &[
+            &PredefinedMenuItem::undo(app, None)?,
+            &PredefinedMenuItem::redo(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::cut(app, None)?,
+            &PredefinedMenuItem::copy(app, None)?,
+            &PredefinedMenuItem::paste(app, None)?,
+            &PredefinedMenuItem::select_all(app, None)?,
+        ],
+    )?;
+    let window = Submenu::with_items(
+        app,
+        "Window",
+        true,
+        &[
+            &PredefinedMenuItem::minimize(app, None)?,
+            &PredefinedMenuItem::close_window(app, None)?,
+        ],
+    )?;
+    let menu = Menu::with_items(app, &[&app_menu, &edit, &window])?;
+    menu.set_as_app_menu()?;
+    Ok(())
+}
 
 struct TrayTitle(Mutex<String>);
 struct ActiveSchedule(Mutex<Option<Schedule>>);
@@ -35,31 +80,9 @@ fn set_schedule<R: Runtime>(app: &tauri::AppHandle<R>, schedule: Option<Schedule
     }
 }
 
-// フォーカスを失って閉じた時刻。トレイのクリックでもまずフォーカスが外れるので、
-// 直後のクリックで開き直さないために使う。
-static POPOVER_BLUR_HIDDEN_AT: AtomicI64 = AtomicI64::new(0);
-
-fn toggle_popover<R: Runtime>(app: &tauri::AppHandle<R>, rect: Option<Rect>) {
-    let Some(window) = app.get_webview_window("popover") else {
-        return;
-    };
-    let just_hidden = chrono_millis() - POPOVER_BLUR_HIDDEN_AT.load(Ordering::Relaxed) < 300;
-    if window.is_visible().unwrap_or(false) {
-        let _ = window.hide();
-    } else if !just_hidden {
-        // トレイの rect は物理ピクセルなので、ウィンドウ幅も倍率込みの物理幅で引く。
-        let width = window.outer_size().map(|s| s.width as i32).unwrap_or(320);
-        let position = rect
-            .map(|r| {
-                let p: tauri::PhysicalPosition<i32> = r.position.to_physical(1.0);
-                let size: tauri::PhysicalSize<u32> = r.size.to_physical(1.0);
-                tauri::PhysicalPosition::new(
-                    p.x + size.width as i32 - width,
-                    p.y + size.height as i32,
-                )
-            })
-            .unwrap_or_else(|| tauri::PhysicalPosition::new(1000, 24));
-        let _ = window.set_position(Position::Physical(position));
+pub fn show_main<R: Runtime>(app: &tauri::AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
     }
@@ -67,10 +90,18 @@ fn toggle_popover<R: Runtime>(app: &tauri::AppHandle<R>, rect: Option<Rect>) {
 
 #[cfg(debug_assertions)]
 pub(crate) fn debug_tray_click(app: &tauri::AppHandle) {
-    let rect = app
-        .tray_by_id("main")
-        .and_then(|tray| tray.rect().ok().flatten());
-    toggle_popover(app, rect);
+    show_main(app);
+}
+
+#[tauri::command]
+fn quit_app<R: Runtime>(app: tauri::AppHandle<R>) {
+    quit(&app);
+}
+
+fn quit<R: Runtime>(app: &tauri::AppHandle<R>) {
+    // window-state は終了時の位置を保存する。区切りで中央に寄せたままだとその位置が残るので、先に元へ戻す。
+    panel::end_due(app.clone());
+    app.exit(0);
 }
 
 #[tauri::command]
@@ -92,27 +123,47 @@ fn time_scale() -> f64 {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            show_main(app)
+        }))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build());
     #[cfg(not(debug_assertions))]
     let builder = builder.plugin(tauri_plugin_autostart::init(
         tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-        None,
+        Some(vec!["--autostart"]),
     ));
     #[cfg(debug_assertions)]
     let builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
     builder
-        // メニューバーのポップオーバーとして、他のウィンドウやアプリへ移ったら閉じる。
-        // 開いたままだと、前面ウィンドウを出した時に全画面アプリのスペースから引き戻される。
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(tauri_plugin_window_state::StateFlags::POSITION)
+                .build(),
+        )
+        .on_menu_event(|app, event| {
+            if event.id() == "quit" {
+                if app.state::<ActiveSchedule>().0.lock().unwrap().is_some() {
+                    show_main(app);
+                    let _ = app.emit("quit-requested", ());
+                } else {
+                    quit(app);
+                }
+            }
+        })
         .on_window_event(|window, event| {
-            if window.label() == "popover" && matches!(event, tauri::WindowEvent::Focused(false)) {
-                POPOVER_BLUR_HIDDEN_AT.store(chrono_millis(), Ordering::Relaxed);
+            if window.label() == "main"
+                && let tauri::WindowEvent::CloseRequested { api, .. } = event
+            {
+                api.prevent_close();
+                // 区切りの画面のまま閉じても、最前面と全スペースの設定を残さない。
+                panel::end_due(window.app_handle().clone());
                 let _ = window.hide();
             }
         })
         .manage(TrayTitle(Mutex::new("pomo".into())))
         .manage(ActiveSchedule(Mutex::new(None)))
+        .manage(Mutex::new(panel::DuePresentation::default()))
         .manage(store::StateStore::new(paths::data_dir()))
         .manage(update::AvailableUpdate(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
@@ -121,11 +172,13 @@ pub fn run() {
             store::load_state,
             store::recent_categories,
             time_scale,
-            panel::hide_front,
+            panel::end_due,
+            quit_app,
             update::update_status,
             update::apply_update
         ])
         .setup(|app| {
+            install_menu(app.handle())?;
             #[cfg(not(debug_assertions))]
             {
                 use tauri_plugin_autostart::ManagerExt;
@@ -137,10 +190,6 @@ pub fn run() {
                 }
             }
             update::start_checks(app.handle().clone());
-            panel::configure(app.handle());
-            #[cfg(target_os = "macos")]
-            app.handle()
-                .set_activation_policy(tauri::ActivationPolicy::Accessory)?;
             let data_dir = paths::data_dir();
             std::fs::create_dir_all(&data_dir)?;
             #[cfg(debug_assertions)]
@@ -151,11 +200,10 @@ pub fn run() {
                     if let TrayIconEvent::Click {
                         button: MouseButton::Left,
                         button_state: MouseButtonState::Up,
-                        rect,
                         ..
                     } = event
                     {
-                        toggle_popover(tray.app_handle(), Some(rect));
+                        show_main(tray.app_handle());
                     }
                 })
                 .build(app)?;
@@ -173,6 +221,9 @@ pub fn run() {
                     schedule::format_title(Some(s), chrono_millis()),
                 );
             }
+            if !std::env::args().any(|arg| arg == "--autostart") {
+                show_main(app.handle());
+            }
             let handle = app.handle().clone();
             std::thread::spawn(move || {
                 let mut due = DueTracker::default();
@@ -182,7 +233,7 @@ pub fn run() {
                     set_title(&handle, schedule::format_title(schedule.as_ref(), now));
                     if due.should_fire(schedule.as_ref(), now) {
                         if let Some(s) = schedule.as_ref() {
-                            panel::show_front(&handle);
+                            panel::present_due(&handle);
                             notify::phase_due(&handle, &s.kind);
                         }
                         let _ = handle.emit("phase-due", ());
@@ -200,8 +251,13 @@ pub fn run() {
             });
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            if matches!(event, tauri::RunEvent::Reopen { .. }) {
+                show_main(app);
+            }
+        });
 }
 
 fn chrono_millis() -> i64 {
