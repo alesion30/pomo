@@ -95,6 +95,12 @@ pub(crate) fn debug_tray_click(app: &tauri::AppHandle) {
 
 #[tauri::command]
 fn quit_app<R: Runtime>(app: tauri::AppHandle<R>) {
+    quit(&app);
+}
+
+fn quit<R: Runtime>(app: &tauri::AppHandle<R>) {
+    // window-state は終了時の位置を保存する。区切りで中央に寄せたままだとその位置が残るので、先に元へ戻す。
+    panel::end_due(app.clone());
     app.exit(0);
 }
 
@@ -117,7 +123,9 @@ fn time_scale() -> f64 {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            show_main(app)
+        }))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build());
     #[cfg(not(debug_assertions))]
@@ -139,7 +147,7 @@ pub fn run() {
                     show_main(app);
                     let _ = app.emit("quit-requested", ());
                 } else {
-                    app.exit(0);
+                    quit(app);
                 }
             }
         })

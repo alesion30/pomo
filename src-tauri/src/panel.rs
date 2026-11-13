@@ -1,15 +1,16 @@
 use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
 use std::sync::Mutex;
-use tauri::{AppHandle, Manager, PhysicalPosition};
+use tauri::{AppHandle, LogicalPosition, Manager};
 
 #[derive(Default)]
 pub struct DuePresentation {
     pub restore: Option<Restore>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Restore {
-    pub position: PhysicalPosition<i32>,
+    // 区切りではマウスのある画面へ動かす。倍率の違う画面へ移ると物理座標では元の位置に戻らないので、論理座標で持つ。
+    pub position: LogicalPosition<f64>,
     pub was_visible: bool,
 }
 
@@ -31,12 +32,16 @@ pub fn present_due<R: tauri::Runtime>(app: &AppHandle<R>) {
     };
     let state = app.state::<Mutex<DuePresentation>>();
     if state.lock().unwrap().restore.is_none()
-        && let (Ok(position), Ok(visible)) = (window.outer_position(), window.is_visible())
+        && let (Ok(position), Ok(scale), Ok(visible)) = (
+            window.outer_position(),
+            window.scale_factor(),
+            window.is_visible(),
+        )
     {
         record(
             &mut state.lock().unwrap(),
             Restore {
-                position,
+                position: position.to_logical(scale),
                 was_visible: visible,
             },
         );
@@ -70,7 +75,7 @@ pub fn end_due<R: tauri::Runtime>(app: AppHandle<R>) {
             ns_window.setCollectionBehavior(NSWindowCollectionBehavior::Default);
             ns_window.setLevel(0);
         }
-        let _ = window.set_position(tauri::Position::Physical(restore.position));
+        let _ = window.set_position(tauri::Position::Logical(restore.position));
         if !restore.was_visible {
             let _ = window.hide();
             let _ = handle.hide();
@@ -121,11 +126,11 @@ mod tests {
     #[test]
     fn due_restore_is_first_write_and_take_once() {
         let first = Restore {
-            position: PhysicalPosition::new(1, 2),
+            position: LogicalPosition::new(1.0, 2.0),
             was_visible: false,
         };
         let second = Restore {
-            position: PhysicalPosition::new(3, 4),
+            position: LogicalPosition::new(3.0, 4.0),
             was_visible: true,
         };
         let mut state = DuePresentation::default();
