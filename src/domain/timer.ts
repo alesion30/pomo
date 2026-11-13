@@ -131,11 +131,17 @@ export function transition(
     if (phase.kind === "long_break") state.streak.completed = 0;
     state.timer = { phase: "idle" };
   }
-  if (command.type === "adjust" && state.timer.phase !== "idle")
-    state.timer.plannedSec = Math.max(
-      config.minimum,
-      state.timer.plannedSec +
-        (command.deltaSec > 0 ? config.adjust : -config.adjust),
-    );
+  if (command.type === "adjust" && state.timer.phase !== "idle") {
+    const timer = state.timer;
+    if (command.deltaSec > 0) timer.plannedSec += config.adjust;
+    else if (view(timer, now).remainingSec < config.adjust)
+      // 残りが減らす幅より短ければ、予定時間を経過時間にそろえて、すぐ超過にする。
+      timer.plannedSec = Math.floor(Math.max(0, now - timer.startedAt) / 1000);
+    else
+      timer.plannedSec = Math.max(
+        config.minimum,
+        timer.plannedSec - config.adjust,
+      );
+  }
   return { state, record };
 }

@@ -11,8 +11,11 @@ describe("popover memo inputs", () => {
     execFileSync("scripts/pomoctl", ["tray-click"], { encoding: "utf8" });
     // 前の spec が集中や休憩を残していることがあるので、待機に戻してから始める。
     const phase = browser.$('[data-testid="phase"]');
-    if ((await phase.getText()) !== "待機中")
+    if ((await phase.getText()) !== "待機中") {
       await browser.$('[data-testid="end"]').click();
+      const confirm = browser.$('[data-testid="end-confirm-ok"]');
+      if (await confirm.isExisting()) await confirm.click();
+    }
     const skip = browser.$('[data-testid="skip-break"]');
     if (await skip.isExisting()) await skip.click();
     await browser.waitUntil(async () => (await phase.getText()) === "待機中");
@@ -22,6 +25,7 @@ describe("popover memo inputs", () => {
     await browser.$('[data-testid="notes-input"]').setValue("memo line");
     await browser.$('[data-testid="start"]').click();
     await browser.$('[data-testid="end"]').click();
+    await browser.$('[data-testid="end-confirm-ok"]').click();
     const dataDir = process.env.XDG_DATA_HOME;
     assert(dataDir, "XDG_DATA_HOME must be set by the E2E runner");
     const lastRecord = () => {
@@ -44,5 +48,6 @@ describe("popover memo inputs", () => {
     );
     // spec の間でデータを共有するので、次の spec のために待機へ戻す。
     await browser.$('[data-testid="end"]').click();
+    await browser.$('[data-testid="end-confirm-ok"]').click();
   });
 });

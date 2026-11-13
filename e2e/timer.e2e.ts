@@ -16,7 +16,17 @@ describe("timer", () => {
         (await browser.$('[data-testid="phase"]').getText()) === "集中",
     );
     assert.equal(await browser.$('[data-testid="phase"]').getText(), "集中");
+    // メニューバーは「タイトル - 残り時間」の順に出す。
+    await browser.waitUntil(() =>
+      /^E2E task - \d\d:\d\d$/.test(
+        execFileSync("scripts/pomoctl", ["title"], { encoding: "utf8" }).trim(),
+      ),
+    );
     await browser.$('[data-testid="end"]').click();
+    await browser.$('[data-testid="end-cancel"]').click();
+    assert.equal(await browser.$('[data-testid="phase"]').getText(), "集中");
+    await browser.$('[data-testid="end"]').click();
+    await browser.$('[data-testid="end-confirm-ok"]').click();
     await browser.waitUntil(
       async () =>
         (await browser.$('[data-testid="phase"]').getText()) === "待機中",
@@ -30,6 +40,7 @@ describe("timer", () => {
         (await browser.$('[data-testid="phase"]').getText()) === "集中",
     );
     await browser.$('[data-testid="break-now"]').click();
+    await browser.$('[data-testid="break-confirm-ok"]').click();
     await browser.waitUntil(
       async () =>
         (await browser.$('[data-testid="phase"]').getText()) === "短い休憩",
