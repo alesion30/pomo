@@ -1,4 +1,6 @@
-use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
+use objc2_app_kit::{
+    NSApplication, NSApplicationActivationPolicy, NSWindow, NSWindowCollectionBehavior,
+};
 use std::sync::Mutex;
 use tauri::{AppHandle, LogicalPosition, Manager};
 
@@ -48,13 +50,10 @@ pub fn present_due<R: tauri::Runtime>(app: &AppHandle<R>) {
     }
     let handle = app.clone();
     let _ = app.run_on_main_thread(move || {
-        // Dock に出るアプリのウィンドウは、他のアプリの全画面スペースの上に出せない（実機で確かめた）。
-        // 前に出している間だけ Dock に出ないアプリにする。
         #[cfg(target_os = "macos")]
-        let _ = handle.set_activation_policy(tauri::ActivationPolicy::Accessory);
-        #[cfg(target_os = "macos")]
-        if let Ok(ptr) = window.ns_window() {
+        if let (Some(mtm), Ok(ptr)) = (objc2::MainThreadMarker::new(), window.ns_window()) {
             let ns_window = unsafe { &*(ptr as *const NSWindow) };
+            let ns_app = NSApplication::sharedApplication(mtm);
             // 別のスペースにあって見えていなかったウィンドウは、閉じていたのと同じに扱う。
             // 表示に戻すと、区切りを抜けた時に全画面アプリからそのスペースへ切り替わってしまう（実機で確かめた）。
             if !ns_window.isOnActiveSpace()
@@ -67,8 +66,20 @@ pub fn present_due<R: tauri::Runtime>(app: &AppHandle<R>) {
             {
                 restore.was_visible = false;
             }
+            // Dock に出るアプリのウィンドウは、他のアプリの全画面スペースの上に出せない（実機で確かめた）。
+            // 前に出している間だけ Dock に出ないアプリにする。Tauri 経由では前面化より後に反映され、
+            // キーウィンドウにならないことが多かったので、AppKit を直接、前面化より先に呼ぶ。
+            ns_app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
             ns_window.setCollectionBehavior(behavior_flags());
             ns_window.setLevel(25);
+            if ns_window.isMiniaturized() {
+                ns_window.deminiaturize(None);
+            }
+            center_on_key_screen(&window);
+            ns_window.makeKeyAndOrderFront(None);
+            #[allow(deprecated)]
+            ns_app.activateIgnoringOtherApps(true);
+            return;
         }
         let _ = window.unminimize();
         center_on_key_screen(&window);
@@ -84,7 +95,6 @@ pub fn end_due<R: tauri::Runtime>(app: AppHandle<R>) {
     };
     let restore = take_restore(&mut app.state::<Mutex<DuePresentation>>().lock().unwrap());
     let Some(restore) = restore else { return };
-    let handle = app.clone();
     let _ = app.run_on_main_thread(move || {
         #[cfg(target_os = "macos")]
         if let Ok(ptr) = window.ns_window() {
@@ -95,18 +105,20 @@ pub fn end_due<R: tauri::Runtime>(app: AppHandle<R>) {
                 && let Some(mtm) = objc2::MainThreadMarker::new()
             {
                 ns_window.orderOut(None);
-                objc2_app_kit::NSApplication::sharedApplication(mtm).hide(None);
+                NSApplication::sharedApplication(mtm).hide(None);
             }
             ns_window.setCollectionBehavior(NSWindowCollectionBehavior::Default);
             ns_window.setLevel(0);
+            if let Some(mtm) = objc2::MainThreadMarker::new() {
+                NSApplication::sharedApplication(mtm)
+                    .setActivationPolicy(NSApplicationActivationPolicy::Regular);
+            }
         }
         let _ = window.set_position(tauri::Position::Logical(restore.position));
         #[cfg(not(target_os = "macos"))]
         if !restore.was_visible {
             let _ = window.hide();
         }
-        #[cfg(target_os = "macos")]
-        let _ = handle.set_activation_policy(tauri::ActivationPolicy::Regular);
     });
 }
 
