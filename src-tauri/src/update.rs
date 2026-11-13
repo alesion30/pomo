@@ -68,20 +68,32 @@ pub fn start_checks(app: tauri::AppHandle) {
 
 fn schedule_check(app: tauri::AppHandle) {
     tauri::async_runtime::spawn(async move {
-        let checked = match app.updater() {
-            Ok(updater) => updater.check().await,
-            Err(error) => Err(error),
-        };
-        match checked {
-            Ok(Some(update)) => {
-                let version = update.version.clone();
-                if let Ok(mut available) = app.state::<AvailableUpdate>().0.lock() {
-                    *available = Some(update);
-                }
-                let _ = app.emit("update-available", version);
-            }
-            Ok(None) => {}
-            Err(error) => eprintln!("update check failed: {error}"),
+        if let Err(error) = check(&app).await {
+            eprintln!("update check failed: {error}");
         }
     });
+}
+
+async fn check(app: &tauri::AppHandle) -> Result<Option<String>, String> {
+    let update = app
+        .updater()
+        .map_err(|e| e.to_string())?
+        .check()
+        .await
+        .map_err(|e| e.to_string())?;
+    let Some(update) = update else {
+        return Ok(None);
+    };
+    let version = update.version.clone();
+    if let Ok(mut available) = app.state::<AvailableUpdate>().0.lock() {
+        *available = Some(update);
+    }
+    let _ = app.emit("update-available", &version);
+    Ok(Some(version))
+}
+
+/// 設定画面の「アップデートを確認」から呼ぶ。見つかった更新は定期の確認と同じく右下の表示にも出す。
+#[tauri::command]
+pub async fn check_update(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    check(&app).await
 }

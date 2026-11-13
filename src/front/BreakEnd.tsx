@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ConfirmDialog } from "../ConfirmDialog";
 import type { AppState, Command } from "../domain/timer";
 import { view } from "../domain/timer";
+import { CategorySelect } from "../ui/CategorySelect";
 import { Clock } from "../ui/Clock";
 import { Dial } from "../ui/Dial";
 import { TitleField } from "../ui/TitleField";
@@ -10,10 +11,12 @@ export function BreakEnd({
   state,
   now,
   dispatch,
+  categories,
 }: {
   state: AppState;
   now: number;
   dispatch: (command: Command) => void;
+  categories: string[];
 }) {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   return (
@@ -53,15 +56,11 @@ export function BreakEnd({
             onChange={(title) => dispatch({ type: "editDraft", title })}
           />
           <div className="category-row">
-            <input
-              className="category-field"
-              data-testid="front-category"
-              aria-label="カテゴリ"
+            <CategorySelect
+              testId="front-category"
+              categories={categories}
               value={state.draft.category}
-              placeholder="カテゴリ"
-              onChange={(e) =>
-                dispatch({ type: "editDraft", category: e.target.value })
-              }
+              onChange={(category) => dispatch({ type: "editDraft", category })}
             />
           </div>
           <div className="actions">

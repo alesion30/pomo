@@ -12,6 +12,8 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: mock.listen }));
 import { initialState } from "../domain/timer";
 import { Popover } from "./Popover";
 
+const extra = { categories: [], onOpenSettings: () => {} };
+
 describe("Popover focus actions", () => {
   afterEach(() => {
     cleanup();
@@ -23,7 +25,9 @@ describe("Popover focus actions", () => {
   };
   it("confirms break and end before the planned time; cancel dispatches nothing", () => {
     const dispatch = vi.fn();
-    render(<Popover appState={focusState} now={0} dispatch={dispatch} />);
+    render(
+      <Popover appState={focusState} now={0} dispatch={dispatch} {...extra} />,
+    );
     fireEvent.click(screen.getByTestId("break-now"));
     fireEvent.click(screen.getByTestId("break-cancel"));
     fireEvent.click(screen.getByTestId("end"));
@@ -39,7 +43,12 @@ describe("Popover focus actions", () => {
   it("breaks and ends without confirmation after the planned time", () => {
     const dispatch = vi.fn();
     render(
-      <Popover appState={focusState} now={1_500_000} dispatch={dispatch} />,
+      <Popover
+        appState={focusState}
+        now={1_500_000}
+        dispatch={dispatch}
+        {...extra}
+      />,
     );
     fireEvent.click(screen.getByTestId("break-now"));
     expect(dispatch).toHaveBeenLastCalledWith({ type: "startBreak" });
@@ -49,7 +58,9 @@ describe("Popover focus actions", () => {
   });
   it("confirms discard; cancel dispatches nothing", () => {
     const dispatch = vi.fn();
-    render(<Popover appState={focusState} now={0} dispatch={dispatch} />);
+    render(
+      <Popover appState={focusState} now={0} dispatch={dispatch} {...extra} />,
+    );
     fireEvent.click(screen.getByTestId("discard"));
     fireEvent.click(screen.getByTestId("discard-cancel"));
     expect(dispatch).not.toHaveBeenCalled();
@@ -68,7 +79,9 @@ describe("Popover focus actions", () => {
         plannedSec: 300,
       },
     };
-    render(<Popover appState={breakState} now={0} dispatch={dispatch} />);
+    render(
+      <Popover appState={breakState} now={0} dispatch={dispatch} {...extra} />,
+    );
     expect(screen.queryByTestId("notes-input")).toBeNull();
     expect(screen.queryByTestId("end")).toBeNull();
     fireEvent.click(screen.getByTestId("discard-break"));
