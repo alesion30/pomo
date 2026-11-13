@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { ConfirmDialog } from "../ConfirmDialog";
 import type { AppState, Command } from "../domain/timer";
 import { view } from "../domain/timer";
 import { Clock } from "../ui/Clock";
@@ -13,10 +15,7 @@ export function BreakEnd({
   now: number;
   dispatch: (command: Command) => void;
 }) {
-  const start = () => {
-    if (state.timer.phase === "break") dispatch({ type: "endBreak" });
-    dispatch({ type: "startFocus" });
-  };
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   return (
     <section
       className="screen"
@@ -24,6 +23,19 @@ export function BreakEnd({
       data-screen="break-end"
       data-tone="break-due"
     >
+      {confirmDiscard && (
+        <ConfirmDialog
+          name="discard-break"
+          message="休憩を破棄しますか？"
+          detail="この休憩は記録に残りません。"
+          okLabel="破棄する"
+          onConfirm={() => {
+            setConfirmDiscard(false);
+            dispatch({ type: "discardBreak" });
+          }}
+          onCancel={() => setConfirmDiscard(false)}
+        />
+      )}
       <div className="pane-time">
         <h1 className="phase">休憩終了</h1>
         <Dial remaining={1}>
@@ -57,9 +69,17 @@ export function BreakEnd({
               type="button"
               data-testid="front-start"
               className="button primary"
-              onClick={start}
+              onClick={() => dispatch({ type: "startFocus" })}
             >
-              開始
+              集中を開始
+            </button>
+            <button
+              type="button"
+              data-testid="front-discard-break"
+              className="button ghost"
+              onClick={() => setConfirmDiscard(true)}
+            >
+              休憩を破棄
             </button>
           </div>
         </div>
