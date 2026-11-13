@@ -11,7 +11,7 @@ export function UpdateButton({
 }) {
   if (version === null) return null;
   return (
-    <div>
+    <div className="update">
       <button
         type="button"
         data-testid="update-button"

@@ -3,9 +3,11 @@ import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DiscardConfirm } from "../DiscardConfirm";
 import { type AppState, type Command, view } from "../domain/timer";
+import { Clock } from "../ui/Clock";
+import { Dial } from "../ui/Dial";
+import { TitleField } from "../ui/TitleField";
 import { filterCategories } from "./categories";
 import { UpdateButton } from "./UpdateButton";
-import "./popover.css";
 
 export function Popover({
   appState,
@@ -31,8 +33,6 @@ export function Popover({
           ? "短い休憩"
           : "長い休憩";
   const time = view(timer, now);
-  const seconds = time.overtimeSec || time.remainingSec;
-  const clock = `${time.overtimeSec ? "+" : ""}${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
   // 取得は非同期で並ぶので、後から届いた古い結果で上書きしない。
   const request = useRef(0);
   const refreshCategories = useCallback(() => {
@@ -91,7 +91,7 @@ export function Popover({
     dispatch({ type: "editDraft", [field]: value });
   const suggestions = filterCategories(categories, appState.draft.category);
   return (
-    <main className="popover">
+    <main className="screen" data-tone={timer.phase}>
       {confirmDiscard && (
         <DiscardConfirm
           onConfirm={() => {
@@ -101,130 +101,156 @@ export function Popover({
           onCancel={() => setConfirmDiscard(false)}
         />
       )}
-      <div data-testid="phase" className="phase">
-        {phase}
-      </div>
-      <div data-testid="clock" className="clock">
-        {timer.phase === "idle" ? "--:--" : clock}
-      </div>
-      <UpdateButton
-        version={updateVersion}
-        phase={timer.phase}
-        applying={applying}
-        onApply={applyUpdate}
-      />
-      {updateError && <p role="alert">更新に失敗しました: {updateError}</p>}
-      <label>
-        タイトル
-        <input
-          data-testid="title-input"
-          value={appState.draft.title}
-          onChange={(e) => edit("title", e.target.value)}
-          placeholder="タイトル"
-        />
-      </label>
-      <label>
-        カテゴリ
-        <input
-          data-testid="category-input"
-          value={appState.draft.category}
-          onChange={(e) => edit("category", e.target.value)}
-          placeholder="カテゴリ"
-        />
-      </label>
-      {suggestions.map((category) => (
-        <button
-          className="suggestion"
-          data-testid="category-suggestion"
-          key={category}
-          type="button"
-          onClick={() => edit("category", category)}
-        >
-          {category}
-        </button>
-      ))}
-      <label>
-        振り返り
-        <textarea
-          data-testid="notes-input"
-          value={appState.draft.notes}
-          onChange={(e) => edit("notes", e.target.value)}
-          placeholder="振り返り"
-        />
-      </label>
-      <div className="controls">
-        {timer.phase === "focus" && (
-          <>
-            <button
-              type="button"
-              data-testid="break-now"
-              onClick={() => dispatch({ type: "startBreak" })}
-            >
-              休憩
-            </button>
-            <button
-              type="button"
-              data-testid="discard"
-              onClick={() => setConfirmDiscard(true)}
-            >
-              破棄
-            </button>
-          </>
-        )}
-        <button
-          type="button"
-          data-testid="start"
-          className="primary"
-          onClick={() => dispatch({ type: "startFocus" })}
-        >
-          開始
-        </button>
-        <button
-          type="button"
-          data-testid="end"
-          onClick={() =>
-            dispatch({
-              type: timer.phase === "break" ? "endBreak" : "endFocus",
-            })
+      <div className="pane-time">
+        <div data-testid="phase" className="phase">
+          {phase}
+        </div>
+        <Dial
+          remaining={
+            timer.phase === "idle" ? 0 : time.remainingSec / timer.plannedSec
           }
-          disabled={timer.phase === "idle"}
         >
-          終了
-        </button>
-        <button
-          type="button"
-          data-testid="plus5"
-          onClick={() => dispatch({ type: "adjust", deltaSec: 300 })}
-          disabled={timer.phase === "idle"}
-        >
-          +5分
-        </button>
-        <button
-          type="button"
-          data-testid="minus5"
-          onClick={() => dispatch({ type: "adjust", deltaSec: -300 })}
-          disabled={timer.phase === "idle"}
-        >
-          -5分
-        </button>
-        {timer.phase === "idle" && timer.offer && (
-          <>
-            <button
-              type="button"
-              data-testid="start-break"
-              className="primary"
-              onClick={() => dispatch({ type: "startBreak" })}
-            >
-              休憩開始
-            </button>
-            <button
-              type="button"
-              data-testid="skip-break"
-              onClick={() => dispatch({ type: "skipBreak" })}
-            >
-              スキップ
-            </button>
-          </>
+          <Clock testId="clock" time={timer.phase === "idle" ? null : time} />
+          {timer.phase !== "idle" && (
+            <div className="clock-caption">
+              {time.overtimeSec ? "超過" : "残り"}
+            </div>
+          )}
+        </Dial>
+        <div className="adjust">
+          {timer.phase !== "idle" && (
+            <>
+              <button
+                type="button"
+                data-testid="minus5"
+                onClick={() => dispatch({ type: "adjust", deltaSec: -300 })}
+              >
+                −5分
+              </button>
+              <button
+                type="button"
+                data-testid="plus5"
+                onClick={() => dispatch({ type: "adjust", deltaSec: 300 })}
+              >
+                +5分
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="pane-note">
+        <div className="card">
+          <TitleField
+            testId="title-input"
+            value={appState.draft.title}
+            onChange={(value) => edit("title", value)}
+          />
+          <div className="category-row">
+            <input
+              className="category-field"
+              data-testid="category-input"
+              aria-label="カテゴリ"
+              value={appState.draft.category}
+              onChange={(e) => edit("category", e.target.value)}
+              placeholder="カテゴリ"
+            />
+            {suggestions.map((category) => (
+              <button
+                className="suggestion"
+                data-testid="category-suggestion"
+                key={category}
+                type="button"
+                onClick={() => edit("category", category)}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+          <textarea
+            className="notes"
+            data-testid="notes-input"
+            aria-label="振り返り"
+            value={appState.draft.notes}
+            onChange={(e) => edit("notes", e.target.value)}
+            placeholder="振り返り"
+          />
+          <div className="actions">
+            {timer.phase === "idle" && (
+              <button
+                type="button"
+                data-testid="start"
+                className="button primary"
+                onClick={() => dispatch({ type: "startFocus" })}
+              >
+                開始
+              </button>
+            )}
+            {timer.phase === "idle" && timer.offer && (
+              <>
+                <button
+                  type="button"
+                  data-testid="start-break"
+                  className="button"
+                  onClick={() => dispatch({ type: "startBreak" })}
+                >
+                  休憩開始
+                </button>
+                <button
+                  type="button"
+                  data-testid="skip-break"
+                  className="button"
+                  onClick={() => dispatch({ type: "skipBreak" })}
+                >
+                  スキップ
+                </button>
+              </>
+            )}
+            {timer.phase === "focus" && (
+              <button
+                type="button"
+                data-testid="break-now"
+                className="button wide"
+                onClick={() => dispatch({ type: "startBreak" })}
+              >
+                休憩
+              </button>
+            )}
+            {timer.phase !== "idle" && (
+              <button
+                type="button"
+                data-testid="end"
+                className="button wide"
+                onClick={() =>
+                  dispatch({
+                    type: timer.phase === "break" ? "endBreak" : "endFocus",
+                  })
+                }
+              >
+                {timer.phase === "break" ? "休憩を終了" : "終了"}
+              </button>
+            )}
+            {timer.phase === "focus" && (
+              <button
+                type="button"
+                data-testid="discard"
+                className="button ghost"
+                onClick={() => setConfirmDiscard(true)}
+              >
+                破棄
+              </button>
+            )}
+          </div>
+        </div>
+        <UpdateButton
+          version={updateVersion}
+          phase={timer.phase}
+          applying={applying}
+          onApply={applyUpdate}
+        />
+        {updateError && (
+          <p role="alert" className="alert">
+            更新に失敗しました: {updateError}
+          </p>
         )}
       </div>
     </main>
