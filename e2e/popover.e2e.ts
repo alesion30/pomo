@@ -42,5 +42,7 @@ describe("popover memo inputs", () => {
       await browser.$('[data-testid="category-suggestion"]').getText(),
       "E2E category",
     );
+    // spec の間でデータを共有するので、次の spec のために待機へ戻す。
+    await browser.$('[data-testid="end"]').click();
   });
 });
