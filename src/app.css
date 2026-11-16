@@ -2,16 +2,15 @@
 :root {
   color-scheme: dark;
 
-  /* --- 元の色 --- */
   --ink-900: #17181b; /* ウィンドウの地。index.html と tauri.conf.json にも同じ値を書く */
-  --ink-800: #1f2024; /* 入力欄 */
-  --ink-700: #292b30; /* 押せる面、ダイアログの面 */
-  --ink-600: #363940; /* 押せる面の hover、ダイアログの中の押せる面 */
+  --ink-800: #1f2024;
+  --ink-700: #292b30;
+  --ink-600: #363940;
   --ink-line: #303238;
   --paper: #eeeff1;
   --paper-dim: #a9adb5;
   --paper-faint: #858a93;
-  --ink: #15161a; /* 色面の上の文字 */
+  --ink: #15161a;
 
   --tomato: #ff6a55;
   --leaf: #45d19b;
@@ -32,11 +31,11 @@
   --wash-control-hover: rgb(0 0 0 / 0.42);
   --wash-line: rgb(255 255 255 / 0.18);
   --hand-light: #ffffff; /* 針を扇より明るくするために混ぜる白 */
-  --hub-edge: rgb(0 0 0 / 0.3); /* 軸の縁 */
+  --hub-edge: rgb(0 0 0 / 0.3);
   --scrim: rgb(8 9 11 / 0.68);
   --shadow: rgb(0 0 0 / 0.5);
 
-  /* --- 役割別の色。既定は待機。画面の data-tone で差し替える --- */
+  /* 役割別の色。既定は待機で、画面の data-tone で差し替える。 */
   --bg: var(--ink-900);
   --field: var(--ink-800);
   --control: var(--ink-700);
@@ -296,7 +295,7 @@ select.category-field {
   }
 }
 
-/* 意図: タイトルとカテゴリ。タイトルが 3 行になっても文字盤が動かないよう、高さを先に取る。 */
+/* タイトルが 3 行になっても文字盤が動かないよう、高さを先に取る。 */
 .intent {
   flex: none;
   display: flex;
@@ -424,7 +423,6 @@ select.category-field:focus-visible {
   border-color: var(--accent);
 }
 
-/* 文字盤の段。余った高さはここで受ける。 */
 .stage {
   flex: 1;
   min-height: 0;
@@ -549,7 +547,7 @@ select.category-field:focus-visible {
   color: var(--text-dim);
 }
 
-/* 開始と予定の終了、その両脇に ±5 分。待機中も高さを取る。 */
+/* 待機中も高さを取り、状態が変わっても下の段が動かないようにする。 */
 .adjust {
   flex: none;
   display: flex;
@@ -757,7 +755,6 @@ select.category-field:focus-visible {
   text-align: center;
 }
 
-/* 区切り画面（集中終了、休憩終了）。文字盤を出さず、見出しと超過時間を大きく出す。 */
 .due-head {
   flex: none;
   display: flex;
@@ -1114,7 +1111,6 @@ select.category-field:focus-visible {
   max-height: 36px;
 }
 
-/* 設定画面。カテゴリを主役にし、版と更新は下の段にまとめる。 */
 .settings-label {
   flex: none;
   margin: 10px 0 6px;
@@ -1317,7 +1313,6 @@ select.category-field:focus-visible {
   color: var(--text);
 }
 
-/* 履歴画面。日付と合計は固定し、記録の一覧だけを送る。 */
 .history {
   position: relative;
   height: 100%;
