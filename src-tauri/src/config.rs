@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::BTreeMap,
     fs::{self, File},
     io::{ErrorKind, Write},
     path::PathBuf,
@@ -10,6 +11,9 @@ use std::{
 pub struct Config {
     #[serde(default)]
     pub categories: Vec<String>,
+    // カテゴリ名から色の名前へ。書いていないカテゴリは、画面が一覧の並び順で色を決める。
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub colors: BTreeMap<String, String>,
     // 手で足したキーは、アプリから保存しても消さない。
     #[serde(flatten)]
     pub rest: serde_json::Map<String, serde_json::Value>,
@@ -18,6 +22,7 @@ pub struct Config {
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct ConfigView {
     pub categories: Vec<String>,
+    pub colors: BTreeMap<String, String>,
     pub error: Option<String>,
 }
 
@@ -66,33 +71,42 @@ impl ConfigStore {
         match self.read() {
             Ok(config) => {
                 *last = config;
-                ConfigView {
-                    categories: last.categories.clone(),
-                    error: None,
-                }
+                view(&last, None)
             }
-            Err(error) => ConfigView {
-                categories: last.categories.clone(),
-                error: Some(error),
-            },
+            Err(error) => view(&last, Some(error)),
         }
     }
 
     /// 壊れたファイルは上書きしない。手で編集した内容を、前に読めた内容で消してしまうため。
-    pub fn save_categories(&self, categories: Vec<String>) -> Result<ConfigView, String> {
+    pub fn save_categories(
+        &self,
+        categories: Vec<String>,
+        colors: BTreeMap<String, String>,
+    ) -> Result<ConfigView, String> {
         let mut last = self.last_good.lock().unwrap();
         let mut config = self.read()?;
         config.categories = normalize(categories);
+        // 一覧にないカテゴリの色は残さない。消したカテゴリの色が、同じ名前で足し直したときに戻らないようにする。
+        config.colors = colors
+            .into_iter()
+            .map(|(name, color)| (name.trim().to_owned(), color))
+            .filter(|(name, _)| config.categories.contains(name))
+            .collect();
         self.write(&config)?;
         *last = config;
-        Ok(ConfigView {
-            categories: last.categories.clone(),
-            error: None,
-        })
+        Ok(view(&last, None))
     }
 
     pub fn path(&self) -> &PathBuf {
         &self.path
+    }
+}
+
+fn view(config: &Config, error: Option<String>) -> ConfigView {
+    ConfigView {
+        categories: config.categories.clone(),
+        colors: config.colors.clone(),
+        error,
     }
 }
 
@@ -114,8 +128,9 @@ pub fn load_config(store: tauri::State<'_, ConfigStore>) -> ConfigView {
 pub fn save_categories(
     store: tauri::State<'_, ConfigStore>,
     categories: Vec<String>,
+    colors: BTreeMap<String, String>,
 ) -> Result<ConfigView, String> {
-    store.save_categories(categories)
+    store.save_categories(categories, colors)
 }
 
 #[tauri::command]
@@ -152,6 +167,7 @@ mod tests {
             store.load(),
             ConfigView {
                 categories: vec![],
+                colors: BTreeMap::new(),
                 error: None
             }
         );
@@ -170,7 +186,11 @@ mod tests {
         let view = store.load();
         assert_eq!(view.categories, vec!["開発", "レビュー"]);
         assert!(view.error.is_some());
-        assert!(store.save_categories(vec!["x".into()]).is_err());
+        assert!(
+            store
+                .save_categories(vec!["x".into()], BTreeMap::new())
+                .is_err()
+        );
         assert_eq!(
             fs::read_to_string(&path).unwrap(),
             r#"{"categories": ["開発",#"#
@@ -184,18 +204,27 @@ mod tests {
         fs::write(&path, r#"{"categories": [], "note": "mine"}"#).unwrap();
         let store = ConfigStore::new(path.clone());
         let view = store
-            .save_categories(vec![
-                " 開発 ".into(),
-                "".into(),
-                "開発".into(),
-                "調査".into(),
-            ])
+            .save_categories(
+                vec![" 開発 ".into(), "".into(), "開発".into(), "調査".into()],
+                BTreeMap::from([
+                    ("開発".to_owned(), "sky".to_owned()),
+                    ("消した".to_owned(), "rose".to_owned()),
+                ]),
+            )
             .unwrap();
         assert_eq!(view.categories, vec!["開発", "調査"]);
+        assert_eq!(
+            view.colors,
+            BTreeMap::from([("開発".to_owned(), "sky".to_owned())])
+        );
         let written: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
         assert_eq!(
             written,
-            serde_json::json!({ "categories": ["開発", "調査"], "note": "mine" })
+            serde_json::json!({
+                "categories": ["開発", "調査"],
+                "colors": { "開発": "sky" },
+                "note": "mine"
+            })
         );
     }
 }

@@ -72,6 +72,7 @@ export function Main() {
         />
       ) : overlay === "history" ? (
         <History
+          colors={config?.colors ?? {}}
           now={timer.now}
           categories={categories}
           onClose={closeOverlay}

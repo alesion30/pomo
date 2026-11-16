@@ -36,6 +36,14 @@ describe("popover memo inputs", () => {
         "E2E category",
       ),
     );
+    // 色を選ぶと、config.json の colors に書かれる。
+    await browser.$('[data-testid="category-color"]').click();
+    await browser.$('[aria-label="緑"]').click();
+    await browser.waitUntil(
+      () =>
+        JSON.parse(readFileSync(`${configDir}/pomo/config.json`, "utf8"))
+          .colors?.["E2E category"] === "leaf",
+    );
     await browser.$('[data-testid="settings-close"]').click();
     const title = await browser.$('[data-testid="title-input"]');
     await title.setValue("E2E task");

@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { ConfirmDialog } from "../ConfirmDialog";
 import type { SessionRecord } from "../domain/record";
 import { formatClock } from "../popover/clockTime";
+import { type Colors, hueOf } from "../ui/categoryColor";
 import {
   defaultInput,
   formatDay,
@@ -21,29 +22,15 @@ import {
 import { useRecords } from "./useRecords";
 
 const DAY_MS = 86_400_000;
-const HUES = 6;
-
-/**
- * カテゴリの色。設定の一覧にあれば並び順で決め、色の数までは重ならないようにする。
- * 一覧から消したカテゴリは、名前から決めて同じ色のままにする。
- */
-function hueOf(category: string | null, categories: string[]) {
-  if (!category) return undefined;
-  const index = categories.indexOf(category);
-  if (index >= 0) return index % HUES;
-  let hash = 0;
-  for (const char of category)
-    hash = (hash * 31 + (char.codePointAt(0) ?? 0)) % 9973;
-  return hash % HUES;
-}
-
 export function History({
   now,
   categories,
+  colors,
   onClose,
 }: {
   now: number;
   categories: string[];
+  colors: Colors;
   onClose(): void;
 }) {
   const { records, error, put, remove } = useRecords();
@@ -196,7 +183,7 @@ export function History({
             return (
               <i
                 key={record.id}
-                data-hue={hueOf(record.category, categories)}
+                data-hue={hueOf(record.category, categories, colors)}
                 style={{ left: `${left * 100}%`, width: `${width * 100}%` }}
               />
             );
@@ -219,7 +206,7 @@ export function History({
               key={record.id}
               className="history-item"
               data-testid="history-item"
-              data-hue={hueOf(record.category, categories)}
+              data-hue={hueOf(record.category, categories, colors)}
               data-outcome={record.outcome}
             >
               <div className="history-item-body">

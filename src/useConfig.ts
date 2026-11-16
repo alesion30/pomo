@@ -1,7 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type ConfigView = { categories: string[]; error: string | null };
+export type ConfigView = {
+  categories: string[];
+  colors: Record<string, string>;
+  error: string | null;
+};
 
 export function useConfig() {
   // 読み込むまでは null にして、空の一覧と区別する。空の一覧で入力欄のカテゴリを消さないため。
@@ -15,10 +19,15 @@ export function useConfig() {
       })
       .catch(console.error);
   }, []);
-  const saveCategories = useCallback(async (categories: string[]) => {
-    request.current++;
-    setConfig(await invoke<ConfigView>("save_categories", { categories }));
-  }, []);
+  const saveCategories = useCallback(
+    async (categories: string[], colors: Record<string, string>) => {
+      request.current++;
+      setConfig(
+        await invoke<ConfigView>("save_categories", { categories, colors }),
+      );
+    },
+    [],
+  );
   useEffect(() => {
     reload();
     // config.json は手でも編集するので、ウィンドウが前面に来るたびに読み直す。
