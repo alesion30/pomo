@@ -41,10 +41,9 @@ export function BreakEnd({
       )}
       <div className="pane-time">
         <h1 className="phase">休憩終了</h1>
-        <Dial remaining={1}>
-          <Clock time={view(state.timer, now)} />
-          <div className="clock-caption">超過</div>
-        </Dial>
+        <Dial form="ring" minutes={60} />
+        <Clock time={view(state.timer, now)} />
+        <div className="clock-caption">超過</div>
         <div className="adjust" />
       </div>
       <div className="pane-note">
@@ -52,6 +51,7 @@ export function BreakEnd({
           <p className="card-label">次の集中</p>
           <TitleField
             testId="front-title"
+            placeholder="次は何に集中しますか？"
             value={state.draft.title}
             onChange={(title) => dispatch({ type: "editDraft", title })}
           />

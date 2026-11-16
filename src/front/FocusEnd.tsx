@@ -48,18 +48,17 @@ export function FocusEnd({
     >
       <div className="pane-time">
         <h1 className="phase">集中終了</h1>
-        <Dial remaining={1}>
-          {running ? (
-            <>
-              <Clock testId="front-clock" time={view(state.timer, now)} />
-              <div className="clock-caption">超過</div>
-            </>
-          ) : (
-            <svg className="dial-check" viewBox="0 0 48 48" aria-hidden="true">
-              <path d="M12 25l8.5 8.5L36 16" />
-            </svg>
-          )}
-        </Dial>
+        <Dial form="pie" minutes={60} />
+        {running ? (
+          <>
+            <Clock testId="front-clock" time={view(state.timer, now)} />
+            <div className="clock-caption">超過</div>
+          </>
+        ) : (
+          <svg className="dial-check" viewBox="0 0 48 48" aria-hidden="true">
+            <path d="M12 25l8.5 8.5L36 16" />
+          </svg>
+        )}
         {running ? (
           <div className="adjust">
             <button

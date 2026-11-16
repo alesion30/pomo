@@ -34,6 +34,9 @@ describe("Popover focus actions", () => {
       <Popover appState={focusState} now={0} dispatch={dispatch} {...extra} />,
     );
     fireEvent.click(screen.getByTestId("break-now"));
+    expect(screen.getByTestId("break-confirm-ok").className).toContain(
+      "primary",
+    );
     fireEvent.click(screen.getByTestId("break-cancel"));
     fireEvent.click(screen.getByTestId("end"));
     fireEvent.click(screen.getByTestId("end-cancel"));
@@ -100,6 +103,23 @@ describe("Popover focus actions", () => {
   });
 });
 
+describe("Popover idle display", () => {
+  afterEach(cleanup);
+  it("shows the planned focus time and an unclickable time preview", () => {
+    render(
+      <Popover
+        appState={structuredClone(initialState)}
+        now={new Date(2026, 10, 16, 10, 47).getTime()}
+        dispatch={() => {}}
+        {...extra}
+      />,
+    );
+    expect(screen.getByTestId("clock").textContent).toBe("25:00");
+    expect(screen.queryByTestId("time-range")).toBeNull();
+    expect(screen.getByText(/→/).tagName).toBe("SPAN");
+  });
+});
+
 describe("Popover time range", () => {
   afterEach(cleanup);
   const startedAt = new Date(2026, 10, 16, 10, 47, 31).getTime();
@@ -115,6 +135,7 @@ describe("Popover time range", () => {
     );
     expect(screen.getByTestId("time-range").textContent).toBe("10:47 → 11:12");
     fireEvent.click(screen.getByTestId("time-range"));
+    expect(screen.getByTestId("time-end").textContent).toBe("11:12");
     expect(screen.getByTestId("time-hours")).toHaveProperty("value", "0");
     expect(screen.getByTestId("time-minutes")).toHaveProperty("value", "25");
     fireEvent.change(screen.getByTestId("time-start"), {

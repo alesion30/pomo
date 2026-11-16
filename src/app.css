@@ -211,14 +211,6 @@ textarea {
   color: var(--text-dim);
 }
 
-.screen-title {
-  justify-self: start;
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 20px;
-}
-
 .pane-tools {
   grid-column: 3;
   justify-self: end;

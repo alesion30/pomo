@@ -81,6 +81,7 @@ export function Main() {
         <Popover
           {...timer}
           categories={categories}
+          colors={config?.colors ?? {}}
           onOpenSettings={() => setOverlay("settings")}
           onOpenHistory={() => setOverlay("history")}
         />

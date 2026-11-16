@@ -37,6 +37,18 @@ export function view(state: TimerState, now: number) {
   };
 }
 
+/** 直前のフェーズの終了から連続とみなす間隔が過ぎ、次の集中で回数を 0 に戻すかどうか。 */
+export function streakExpired(
+  streak: AppState["streak"],
+  now: number,
+  scale = 1,
+) {
+  return (
+    streak.lastPhaseEndedAt !== null &&
+    now - streak.lastPhaseEndedAt >= durations(scale).streakGapMs
+  );
+}
+
 export function transition(
   app: AppState,
   command: Command,
@@ -56,11 +68,7 @@ export function transition(
     return { ...transition(state, command, now, scale), record: breakRecord };
   }
   if (command.type === "startFocus" && state.timer.phase === "idle") {
-    if (
-      state.streak.lastPhaseEndedAt !== null &&
-      now - state.streak.lastPhaseEndedAt >= config.streakGapMs
-    )
-      state.streak.completed = 0;
+    if (streakExpired(state.streak, now, scale)) state.streak.completed = 0;
     state.timer = { phase: "focus", startedAt: now, plannedSec: config.focus };
   }
   if (command.type === "endFocus" && state.timer.phase === "focus") {

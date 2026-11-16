@@ -1,9 +1,11 @@
 export function TitleField({
   testId,
+  placeholder,
   value,
   onChange,
 }: {
   testId: string;
+  placeholder: string;
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -13,8 +15,8 @@ export function TitleField({
       className="title-field"
       data-testid={testId}
       aria-label="タイトル"
-      placeholder="タイトル"
-      rows={2}
+      placeholder={placeholder}
+      rows={1}
       value={value}
       onChange={(e) => onChange(e.target.value.replace(/[\r\n]+/g, ""))}
       onKeyDown={(e) => {

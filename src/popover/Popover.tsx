@@ -2,11 +2,15 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { durations } from "../domain/constants";
 import { type AppState, type Command, view } from "../domain/timer";
 import { CategorySelect } from "../ui/CategorySelect";
 import { Clock } from "../ui/Clock";
+import { CycleDots, cycleProgress } from "../ui/CycleDots";
+import { type Colors, hueOf } from "../ui/categoryColor";
 import { Dial } from "../ui/Dial";
 import { TitleField } from "../ui/TitleField";
+import { formatClock } from "./clockTime";
 import { TimeEditDialog, TimeRange } from "./TimeRange";
 import { UpdateButton } from "./UpdateButton";
 
@@ -16,6 +20,7 @@ export function Popover({
   scale,
   dispatch,
   categories,
+  colors = {},
   onOpenSettings,
   onOpenHistory,
 }: {
@@ -24,6 +29,7 @@ export function Popover({
   scale: number;
   dispatch: (command: Command) => void;
   categories: string[];
+  colors?: Colors;
   onOpenSettings(): void;
   onOpenHistory(): void;
 }) {
@@ -45,6 +51,12 @@ export function Popover({
           ? "短い休憩"
           : "長い休憩";
   const time = view(timer, now);
+  const accentHue = hueOf(appState.draft.category || null, categories, colors);
+  const dialTime =
+    timer.phase === "idle"
+      ? { remainingSec: durations(scale).focus, overtimeSec: 0 }
+      : time;
+  const { done, current } = cycleProgress(appState, now, scale);
   // 予定時間前の休憩と終了は、この集中を回数に数えないので確かめる。
   const early = timer.phase === "focus" && time.remainingSec > 0;
   const confirmIfEarly = (name: "break" | "end") =>
@@ -81,7 +93,7 @@ export function Popover({
   const edit = (field: "title" | "category" | "notes", value: string) =>
     dispatch({ type: "editDraft", [field]: value });
   return (
-    <main className="screen" data-tone={timer.phase}>
+    <main className="screen" data-tone={timer.phase} data-hue={accentHue}>
       {confirming && (
         <ConfirmDialog
           name={confirming}
@@ -105,189 +117,190 @@ export function Popover({
           onCancel={closeTimes}
         />
       )}
-      <div className="pane-time">
-        <div className="pane-head">
-          <div data-testid="phase" className="phase">
-            {phase}
-          </div>
-          <div className="pane-tools">
-            <button
-              type="button"
-              className="icon-button"
-              data-testid="open-history"
-              aria-label="履歴"
-              title="履歴"
-              onClick={onOpenHistory}
-            >
-              <HistoryIcon />
-            </button>
-            <button
-              type="button"
-              className="icon-button"
-              data-testid="open-settings"
-              aria-label="設定"
-              title="設定（⌘,）"
-              onClick={onOpenSettings}
-            >
-              <GearIcon />
-            </button>
-          </div>
+      <div className="topbar">
+        <div data-testid="phase" className="phase">
+          {phase}
         </div>
-        <Dial
-          remaining={
-            timer.phase === "idle" ? 0 : time.remainingSec / timer.plannedSec
-          }
-        >
-          <Clock testId="clock" time={timer.phase === "idle" ? null : time} />
-          {timer.phase !== "idle" && (
-            <div className="clock-caption">
-              {time.overtimeSec ? "超過" : "残り"}
-            </div>
-          )}
-        </Dial>
-        <div className="adjust">
-          {timer.phase !== "idle" && (
-            <>
-              <TimeRange timer={timer} onEdit={() => setEditingTimes(true)} />
-              <button
-                type="button"
-                data-testid="minus5"
-                onClick={() => dispatch({ type: "adjust", deltaSec: -300 })}
-              >
-                −5分
-              </button>
-              <button
-                type="button"
-                data-testid="plus5"
-                onClick={() => dispatch({ type: "adjust", deltaSec: 300 })}
-              >
-                +5分
-              </button>
-            </>
-          )}
+        <CycleDots done={done} current={current} />
+        <div className="pane-tools">
+          <button
+            type="button"
+            className="icon-button"
+            data-testid="open-history"
+            aria-label="履歴"
+            title="履歴"
+            onClick={onOpenHistory}
+          >
+            <HistoryIcon />
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            data-testid="open-settings"
+            aria-label="設定"
+            title="設定（⌘,）"
+            onClick={onOpenSettings}
+          >
+            <GearIcon />
+          </button>
         </div>
       </div>
-      <div className="pane-note">
-        <div className="card">
-          {timer.phase === "break" && <p className="card-label">次の集中</p>}
-          <TitleField
-            testId="title-input"
-            value={appState.draft.title}
-            onChange={(value) => edit("title", value)}
-          />
-          <div className="category-row">
-            <CategorySelect
-              testId="category-input"
-              categories={categories}
-              value={appState.draft.category}
-              onChange={(value) => edit("category", value)}
-            />
-          </div>
-          {timer.phase !== "break" && (
-            <textarea
-              className="notes"
-              data-testid="notes-input"
-              aria-label="振り返り"
-              value={appState.draft.notes}
-              onChange={(e) => edit("notes", e.target.value)}
-              placeholder="振り返り"
-            />
-          )}
-          <div className="actions">
-            {timer.phase === "idle" && (
-              <button
-                type="button"
-                data-testid="start"
-                className="button primary"
-                onClick={() => dispatch({ type: "startFocus" })}
-              >
-                開始
-              </button>
-            )}
-            {timer.phase === "idle" && timer.offer && (
-              <>
-                <button
-                  type="button"
-                  data-testid="start-break"
-                  className="button"
-                  onClick={() => dispatch({ type: "startBreak" })}
-                >
-                  休憩開始
-                </button>
-                <button
-                  type="button"
-                  data-testid="skip-break"
-                  className="button"
-                  onClick={() => dispatch({ type: "skipBreak" })}
-                >
-                  スキップ
-                </button>
-              </>
-            )}
-            {timer.phase === "focus" && (
-              <button
-                type="button"
-                data-testid="break-now"
-                className="button wide"
-                onClick={() => confirmIfEarly("break")}
-              >
-                休憩
-              </button>
-            )}
-            {timer.phase === "focus" && (
-              <button
-                type="button"
-                data-testid="end"
-                className="button wide"
-                onClick={() => confirmIfEarly("end")}
-              >
-                終了
-              </button>
-            )}
-            {timer.phase === "break" && (
-              <>
-                <button
-                  type="button"
-                  data-testid="start-focus"
-                  className="button primary"
-                  onClick={() => dispatch({ type: "startFocus" })}
-                >
-                  集中を開始
-                </button>
-                <button
-                  type="button"
-                  data-testid="discard-break"
-                  className="button ghost"
-                  onClick={() => setConfirming("discard-break")}
-                >
-                  休憩を破棄
-                </button>
-              </>
-            )}
-            {timer.phase === "focus" && (
-              <button
-                type="button"
-                data-testid="discard"
-                className="button ghost"
-                onClick={() => setConfirming("discard")}
-              >
-                破棄
-              </button>
-            )}
-          </div>
-        </div>
-        <UpdateButton
-          version={updateVersion}
-          phase={timer.phase}
-          applying={applying}
-          onApply={applyUpdate}
+      <section className="intent">
+        {timer.phase === "break" && <p className="intent-label">次の集中</p>}
+        <TitleField
+          testId="title-input"
+          placeholder={
+            timer.phase === "idle"
+              ? "何に集中しますか？"
+              : timer.phase === "break"
+                ? "次は何に集中しますか？"
+                : "タイトル"
+          }
+          value={appState.draft.title}
+          onChange={(value) => edit("title", value)}
         />
-        {updateError && (
-          <p role="alert" className="alert">
-            更新に失敗しました: {updateError}
-          </p>
+        <CategorySelect
+          testId="category-input"
+          categories={categories}
+          hue={accentHue}
+          value={appState.draft.category}
+          onChange={(value) => edit("category", value)}
+        />
+      </section>
+      <section className="stage">
+        <Dial
+          form={timer.phase === "break" ? "ring" : "pie"}
+          minutes={(dialTime.remainingSec * scale) / 60}
+        />
+        <Clock testId="clock" time={dialTime} />
+        {timer.phase === "idle" ? (
+          <span className="time-preview">
+            {formatClock(now)} →{" "}
+            {formatClock(now + durations(scale).focus * 1000)}
+          </span>
+        ) : (
+          <div className="adjust">
+            <button
+              type="button"
+              data-testid="minus5"
+              onClick={() => dispatch({ type: "adjust", deltaSec: -300 })}
+            >
+              −5分
+            </button>
+            <TimeRange timer={timer} onEdit={() => setEditingTimes(true)} />
+            <button
+              type="button"
+              data-testid="plus5"
+              onClick={() => dispatch({ type: "adjust", deltaSec: 300 })}
+            >
+              +5分
+            </button>
+          </div>
+        )}
+      </section>
+      {timer.phase !== "break" && (
+        <textarea
+          className="notes"
+          data-testid="notes-input"
+          aria-label="振り返り"
+          value={appState.draft.notes}
+          onChange={(e) => edit("notes", e.target.value)}
+          placeholder="振り返り"
+        />
+      )}
+      <div className="actions">
+        {timer.phase === "idle" && (
+          <button
+            type="button"
+            data-testid="start"
+            className="button primary"
+            onClick={() => dispatch({ type: "startFocus" })}
+          >
+            開始
+          </button>
+        )}
+        {timer.phase === "idle" && timer.offer && (
+          <>
+            <button
+              type="button"
+              data-testid="start-break"
+              className="button"
+              onClick={() => dispatch({ type: "startBreak" })}
+            >
+              休憩開始
+            </button>
+            <button
+              type="button"
+              data-testid="skip-break"
+              className="button"
+              onClick={() => dispatch({ type: "skipBreak" })}
+            >
+              スキップ
+            </button>
+          </>
+        )}
+        {timer.phase === "focus" && (
+          <button
+            type="button"
+            data-testid="break-now"
+            className="button wide"
+            onClick={() => confirmIfEarly("break")}
+          >
+            休憩
+          </button>
+        )}
+        {timer.phase === "focus" && (
+          <button
+            type="button"
+            data-testid="end"
+            className="button wide"
+            onClick={() => confirmIfEarly("end")}
+          >
+            終了
+          </button>
+        )}
+        {timer.phase === "break" && (
+          <>
+            <button
+              type="button"
+              data-testid="start-focus"
+              className="button primary"
+              onClick={() => dispatch({ type: "startFocus" })}
+            >
+              集中を開始
+            </button>
+            <button
+              type="button"
+              data-testid="discard-break"
+              className="button ghost"
+              onClick={() => setConfirming("discard-break")}
+            >
+              休憩を破棄
+            </button>
+          </>
+        )}
+        {timer.phase === "focus" && (
+          <button
+            type="button"
+            data-testid="discard"
+            className="button ghost"
+            onClick={() => setConfirming("discard")}
+          >
+            破棄
+          </button>
         )}
       </div>
+      <UpdateButton
+        version={updateVersion}
+        phase={timer.phase}
+        applying={applying}
+        onApply={applyUpdate}
+      />
+      {updateError && (
+        <p role="alert" className="alert update-error">
+          更新に失敗しました: {updateError}
+        </p>
+      )}
     </main>
   );
 }
@@ -309,17 +322,25 @@ const confirms = {
     message: "休憩に入りますか？",
     detail: "予定時間の前なので、この集中は回数に数えません。",
     okLabel: "休憩する",
+    tone: "plain",
     command: { type: "startBreak" },
   },
   end: {
     message: "集中を終了しますか？",
     detail: "予定時間の前なので、この集中は回数に数えません。",
     okLabel: "終了する",
+    tone: "plain",
     command: { type: "endFocus" },
   },
 } satisfies Record<
   string,
-  { message: string; detail: string; okLabel: string; command: Command }
+  {
+    message: string;
+    detail: string;
+    okLabel: string;
+    command: Command;
+    tone?: "danger" | "plain";
+  }
 >;
 
 function HistoryIcon() {
