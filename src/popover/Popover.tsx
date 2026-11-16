@@ -7,17 +7,20 @@ import { CategorySelect } from "../ui/CategorySelect";
 import { Clock } from "../ui/Clock";
 import { Dial } from "../ui/Dial";
 import { TitleField } from "../ui/TitleField";
+import { TimeEditDialog, TimeRange } from "./TimeRange";
 import { UpdateButton } from "./UpdateButton";
 
 export function Popover({
   appState,
   now,
+  scale,
   dispatch,
   categories,
   onOpenSettings,
 }: {
   appState: AppState;
   now: number;
+  scale: number;
   dispatch: (command: Command) => void;
   categories: string[];
   onOpenSettings(): void;
@@ -28,6 +31,8 @@ export function Popover({
   const [confirming, setConfirming] = useState<keyof typeof confirms | null>(
     null,
   );
+  const [editingTimes, setEditingTimes] = useState(false);
+  const closeTimes = useCallback(() => setEditingTimes(false), []);
   const timer = appState.timer;
   const phase =
     timer.phase === "idle"
@@ -86,6 +91,18 @@ export function Popover({
           onCancel={() => setConfirming(null)}
         />
       )}
+      {editingTimes && timer.phase !== "idle" && (
+        <TimeEditDialog
+          timer={timer}
+          now={now}
+          scale={scale}
+          onSave={(startedAt, plannedMin) => {
+            setEditingTimes(false);
+            dispatch({ type: "editTimes", startedAt, plannedMin });
+          }}
+          onCancel={closeTimes}
+        />
+      )}
       <div className="pane-time">
         <div className="pane-head">
           <div data-testid="phase" className="phase">
@@ -117,6 +134,7 @@ export function Popover({
         <div className="adjust">
           {timer.phase !== "idle" && (
             <>
+              <TimeRange timer={timer} onEdit={() => setEditingTimes(true)} />
               <button
                 type="button"
                 data-testid="minus5"

@@ -1,4 +1,4 @@
-import { durations, LONG_EVERY } from "./constants";
+import { durations, LONG_EVERY, scaled } from "./constants";
 import { makeRecord, type SessionRecord } from "./record";
 
 export type BreakKind = "short_break" | "long_break";
@@ -19,6 +19,7 @@ export type Command =
   | { type: "skipBreak" }
   | { type: "discardBreak" }
   | { type: "adjust"; deltaSec: 300 | -300 }
+  | { type: "editTimes"; startedAt: number; plannedMin: number }
   | { type: "editDraft"; title?: string; category?: string; notes?: string };
 
 export const initialState: AppState = {
@@ -132,7 +133,23 @@ export function transition(
         timer.plannedSec - config.adjust,
       );
   }
+  if (command.type === "editTimes" && state.timer.phase !== "idle") {
+    // 開始は今より後にしない。終了が今より前になったら、−5 分と同じくすぐ超過にする。
+    state.timer.startedAt = Math.min(command.startedAt, now);
+    state.timer.plannedSec = scaled(
+      Math.max(1, command.plannedMin) * 60,
+      scale,
+    );
+  }
   return { state, record };
+}
+
+/** 編集画面に出す予定時間（分）。縮めた時間でも、実時間の分に戻して出す。 */
+export function plannedMinutes(
+  timer: Extract<TimerState, { plannedSec: number }>,
+  scale = 1,
+) {
+  return Math.round((timer.plannedSec * scale) / 60);
 }
 
 function endBreak(

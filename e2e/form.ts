@@ -19,3 +19,23 @@ export async function selectOption(testId: string, text: string) {
     text,
   );
 }
+
+// React は value の直接の代入を入力として扱わないので、ネイティブの setter で値を入れて input を送る。
+// 埋め込みの WebDriver では time 入力に setValue で時刻を打てないため。
+export async function setInput(testId: string, value: string) {
+  await browser.execute(
+    (id, next) => {
+      const input = document.querySelector<HTMLInputElement>(
+        `[data-testid="${id}"]`,
+      );
+      if (!input) throw new Error(`no input ${id}`);
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set?.call(input, next);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    },
+    testId,
+    value,
+  );
+}

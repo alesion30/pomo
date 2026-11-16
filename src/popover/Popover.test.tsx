@@ -12,7 +12,7 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: mock.listen }));
 import { initialState } from "../domain/timer";
 import { Popover } from "./Popover";
 
-const extra = { categories: [], onOpenSettings: () => {} };
+const extra = { categories: [], onOpenSettings: () => {}, scale: 1 };
 
 describe("Popover focus actions", () => {
   afterEach(() => {
@@ -92,5 +92,60 @@ describe("Popover focus actions", () => {
     expect(dispatch).toHaveBeenLastCalledWith({ type: "discardBreak" });
     fireEvent.click(screen.getByTestId("start-focus"));
     expect(dispatch).toHaveBeenLastCalledWith({ type: "startFocus" });
+  });
+});
+
+describe("Popover time range", () => {
+  afterEach(cleanup);
+  const startedAt = new Date(2026, 10, 16, 10, 47, 31).getTime();
+  const now = startedAt + 5 * 60_000;
+  const state = {
+    ...structuredClone(initialState),
+    timer: { phase: "focus" as const, startedAt, plannedSec: 1500 },
+  };
+  it("shows the start and planned end and edits them", () => {
+    const dispatch = vi.fn();
+    render(
+      <Popover appState={state} now={now} dispatch={dispatch} {...extra} />,
+    );
+    expect(screen.getByTestId("time-range").textContent).toBe("10:47 → 11:12");
+    fireEvent.click(screen.getByTestId("time-range"));
+    expect(screen.getByTestId("time-hours")).toHaveProperty("value", "0");
+    expect(screen.getByTestId("time-minutes")).toHaveProperty("value", "25");
+    fireEvent.change(screen.getByTestId("time-start"), {
+      target: { value: "10:40" },
+    });
+    fireEvent.change(screen.getByTestId("time-hours"), {
+      target: { value: "1" },
+    });
+    fireEvent.click(screen.getByTestId("time-save"));
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "editTimes",
+      startedAt: new Date(2026, 10, 16, 10, 40).getTime(),
+      plannedMin: 85,
+    });
+    expect(screen.queryByTestId("time-edit")).toBeNull();
+  });
+  it("refuses a future start or a zero duration, and cancel dispatches nothing", () => {
+    const dispatch = vi.fn();
+    render(
+      <Popover appState={state} now={now} dispatch={dispatch} {...extra} />,
+    );
+    fireEvent.click(screen.getByTestId("time-range"));
+    fireEvent.change(screen.getByTestId("time-start"), {
+      target: { value: "11:00" },
+    });
+    expect(screen.getByTestId("time-error").textContent).toContain("今より前");
+    expect(screen.getByTestId("time-save")).toHaveProperty("disabled", true);
+    fireEvent.change(screen.getByTestId("time-start"), {
+      target: { value: "10:47" },
+    });
+    fireEvent.change(screen.getByTestId("time-minutes"), {
+      target: { value: "0" },
+    });
+    expect(screen.getByTestId("time-error").textContent).toContain("1 分以上");
+    fireEvent.click(screen.getByTestId("time-cancel"));
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("time-edit")).toBeNull();
   });
 });
