@@ -71,25 +71,19 @@ pub fn format_title(schedule: Option<&Schedule>, now: i64) -> String {
 
 #[derive(Default)]
 pub struct DueTracker {
-    current: Option<i64>,
     planned_end: Option<i64>,
     fired: bool,
 }
 impl DueTracker {
     pub fn should_fire(&mut self, schedule: Option<&Schedule>, now: i64) -> bool {
         let Some(s) = schedule else {
-            self.current = None;
             self.planned_end = None;
             self.fired = false;
             return false;
         };
-        // 同じフェーズの中では、予定時刻が未来に戻った時だけ再び出せるようにする。
-        if self.current != Some(s.started_at) {
-            self.current = Some(s.started_at);
-            self.planned_end = None;
-            self.fired = false;
-        }
-        // ±5 分で予定時刻を動かして超過に入った時は、自分で切り上げたので前面化しない。
+        // ±5 分や開始と時間の編集で予定時刻を動かして超過に入った時は、自分で切り上げたので前面化しない。
+        // 開始時刻ではフェーズを見分けない。開始の編集でも変わるため。新しいフェーズの予定時刻は必ず未来にあるので、
+        // 予定時刻の変化だけを見ても、新しいフェーズの到達は出せる。
         let moved = self.planned_end.is_some_and(|end| end != s.planned_end);
         self.planned_end = Some(s.planned_end);
         if now < s.planned_end {
@@ -166,6 +160,30 @@ mod tests {
         assert!(!d.should_fire(Some(&extended), 32_000));
         assert!(d.should_fire(Some(&extended), 40_000));
     }
+    #[test]
+    fn editing_the_start_into_overtime_does_not_fire() {
+        let s = sample(ScheduleKind::Focus);
+        let mut d = DueTracker::default();
+        assert!(!d.should_fire(Some(&s), 30_000));
+        let mut edited = s.clone();
+        edited.started_at = -40_000;
+        edited.planned_end = 20_000;
+        assert!(!d.should_fire(Some(&edited), 30_000));
+        assert!(!d.should_fire(Some(&edited), 31_000));
+    }
+
+    #[test]
+    fn fires_for_the_next_phase_after_one_fired() {
+        let s = sample(ScheduleKind::Focus);
+        let mut d = DueTracker::default();
+        assert!(d.should_fire(Some(&s), 60_000));
+        let mut next = sample(ScheduleKind::ShortBreak);
+        next.started_at = 61_000;
+        next.planned_end = 121_000;
+        assert!(!d.should_fire(Some(&next), 61_000));
+        assert!(d.should_fire(Some(&next), 121_000));
+    }
+
     #[test]
     fn fires_when_launched_already_overdue() {
         let mut d = DueTracker::default();

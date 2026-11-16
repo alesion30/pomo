@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { type AppState, initialState, transition, view } from "./timer";
+import {
+  type AppState,
+  initialState,
+  plannedMinutes,
+  transition,
+  view,
+} from "./timer";
 
 describe("timer transitions", () => {
   it("offers a long break after four completed focus sessions", () => {
@@ -176,5 +182,70 @@ describe("break actions", () => {
     expect(result.state.timer).toEqual({ phase: "idle" });
     expect(result.state.streak).toEqual(app.streak);
     expect(result.state.draft).toEqual(app.draft);
+  });
+});
+
+describe("edit times", () => {
+  const focus = transition(initialState, { type: "startFocus" }, 600_000).state;
+  it("moves the start and sets the planned minutes", () => {
+    const app = transition(
+      focus,
+      { type: "editTimes", startedAt: 300_000, plannedMin: 30 },
+      700_000,
+    ).state;
+    expect(app.timer).toEqual({
+      phase: "focus",
+      startedAt: 300_000,
+      plannedSec: 1800,
+    });
+    const ended = transition(app, { type: "endFocus" }, 2_100_000);
+    expect(ended.record).toMatchObject({ actual_sec: 1800, planned_sec: 1800 });
+    expect(ended.record?.outcome).toBe("completed");
+  });
+  it("keeps the start at or before now and the duration at least a minute", () => {
+    const app = transition(
+      focus,
+      { type: "editTimes", startedAt: 900_000, plannedMin: 0 },
+      700_000,
+    ).state;
+    expect(app.timer).toMatchObject({ startedAt: 700_000, plannedSec: 60 });
+  });
+  it("jumps to overtime when the new end is already past", () => {
+    const app = transition(
+      focus,
+      { type: "editTimes", startedAt: 0, plannedMin: 5 },
+      600_000,
+    ).state;
+    expect(view(app.timer, 600_000)).toEqual({
+      remainingSec: 0,
+      overtimeSec: 300,
+    });
+  });
+  it("scales the minutes and edits breaks too; ignores idle", () => {
+    const brk: AppState = {
+      ...structuredClone(initialState),
+      timer: {
+        phase: "break",
+        kind: "short_break",
+        startedAt: 0,
+        plannedSec: 5,
+      },
+    };
+    const app = transition(
+      brk,
+      { type: "editTimes", startedAt: 0, plannedMin: 10 },
+      1000,
+      60,
+    ).state;
+    expect(app.timer).toMatchObject({ plannedSec: 10 });
+    if (app.timer.phase === "idle") throw new Error("break expected");
+    expect(plannedMinutes(app.timer, 60)).toBe(10);
+    expect(
+      transition(
+        initialState,
+        { type: "editTimes", startedAt: 0, plannedMin: 10 },
+        1000,
+      ).state.timer,
+    ).toEqual({ phase: "idle" });
   });
 });

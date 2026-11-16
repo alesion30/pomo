@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { browser } from "@wdio/globals";
-import { selectOption } from "./select";
+import { selectOption } from "./form";
 
 declare function describe(title: string, fn: () => void): void;
 declare function it(title: string, fn: () => Promise<void>): void;

@@ -143,5 +143,5 @@ export function useTimer() {
     [run, scale],
   );
   runRef.current = run;
-  return { appState, now, dispatch };
+  return { appState, now, dispatch, scale };
 }

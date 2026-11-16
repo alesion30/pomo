@@ -7,7 +7,7 @@ export const MIN_PLANNED_SEC = 5 * 60;
 export const STREAK_GAP_SEC = 60 * 60;
 
 // 予定時刻を整数ミリ秒に保つため、縮めた時間も整数秒にそろえる。
-function scaled(sec: number, scale: number) {
+export function scaled(sec: number, scale: number) {
   return Math.max(1, Math.round(sec / scale));
 }
 

@@ -277,16 +277,20 @@ textarea {
   stroke-linejoin: round;
 }
 
-/* ±5 分。待機中も高さを取り、フェーズが変わってもダイヤルの位置を動かさない。 */
+/* 開始と終了の時刻、その下に ±5 分。待機中も高さを取り、フェーズが変わってもダイヤルの位置を動かさない。 */
 .adjust {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
-  height: 28px;
+  width: 100%;
+  height: 64px;
 }
 
 .adjust button {
   height: 28px;
   padding: 0 14px;
+  white-space: nowrap;
   border: 0;
   border-radius: 999px;
   background: var(--control);
@@ -299,6 +303,17 @@ textarea {
 .adjust button:hover {
   background: var(--control-hover);
   color: var(--text);
+}
+
+/* 開始と予定の終了。押せることが分かるよう、±5 分と違って枠線で囲む。 */
+.adjust .time-range {
+  flex-basis: 100%;
+  max-width: 160px;
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  padding: 0 12px;
 }
 
 .pane-note {
@@ -632,6 +647,54 @@ select.category-field {
 .dialog .button.danger {
   background: var(--tomato);
   color: var(--tomato-ink);
+}
+
+.dialog .button.primary {
+  flex: none;
+  background: var(--tomato);
+  color: var(--tomato-ink);
+}
+
+.dialog .button:disabled {
+  opacity: 0.5;
+  filter: none;
+}
+
+.time-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.time-edit-row > span:first-child {
+  width: 40px;
+  color: var(--paper-dim);
+}
+
+.time-edit-row .unit {
+  color: var(--paper-dim);
+}
+
+.time-edit input {
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--ink-600);
+  color: var(--paper);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-edit input[type="number"] {
+  width: 56px;
+}
+
+.time-edit .alert {
+  margin: 0 0 4px;
+  color: var(--tomato);
 }
 
 .dialog :focus-visible {
