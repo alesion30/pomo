@@ -178,6 +178,9 @@ pub fn run() {
         .manage(config::ConfigStore::new(paths::config_path()))
         .invoke_handler(tauri::generate_handler![
             store::append_record,
+            store::list_records,
+            store::put_record,
+            store::delete_record,
             store::save_state,
             store::load_state,
             config::load_config,

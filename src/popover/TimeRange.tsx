@@ -45,7 +45,7 @@ export function TimeEditDialog({
   const [mins, setMins] = useState(String(minutes % 60));
   useEffect(() => {
     const close = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
+      if (e.key === "Escape" && !e.isComposing) onCancel();
     };
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);

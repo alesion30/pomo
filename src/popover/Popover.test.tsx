@@ -12,7 +12,12 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: mock.listen }));
 import { initialState } from "../domain/timer";
 import { Popover } from "./Popover";
 
-const extra = { categories: [], onOpenSettings: () => {}, scale: 1 };
+const extra = {
+  categories: [],
+  onOpenSettings: () => {},
+  onOpenHistory: () => {},
+  scale: 1,
+};
 
 describe("Popover focus actions", () => {
   afterEach(() => {

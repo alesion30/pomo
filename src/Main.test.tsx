@@ -132,4 +132,22 @@ describe("Main screen", () => {
     fireEvent.click(screen.getByTestId("settings-close"));
     expect(screen.getByTestId("phase")).toBeTruthy();
   });
+  it("opens the history, lets a due screen take priority, and closes back to the timer", () => {
+    mock.now = 1_000;
+    mock.state = {
+      ...initialState,
+      timer: { phase: "focus", startedAt: 0, plannedSec: 25 },
+    };
+    const { rerender } = render(<Main />);
+    fireEvent.click(screen.getByTestId("open-history"));
+    expect(screen.getByTestId("history")).toBeTruthy();
+    mock.now = 100_000;
+    rerender(<Main />);
+    expect(screen.getByTestId("front-screen")).toBeTruthy();
+    mock.state = initialState;
+    rerender(<Main />);
+    expect(screen.getByTestId("history")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("history-close"));
+    expect(screen.getByTestId("phase")).toBeTruthy();
+  });
 });

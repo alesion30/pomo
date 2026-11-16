@@ -18,6 +18,11 @@
   --leaf: #45d19b;
   --leaf-deep: #146248;
   --leaf-dusk: #0c3329;
+  /* 履歴でカテゴリを見分ける色。トマトと葉に続けて使う。 */
+  --sky: #6fb1ff;
+  --amber: #f0b95a;
+  --violet: #b09bff;
+  --rose: #f58cc0;
 
   --cream: #fff6f2;
   --cream-ink: #1b1c20;
@@ -806,4 +811,399 @@ select.category-field {
 .category-add {
   flex: none;
   gap: 8px;
+}
+
+.pane-tools {
+  display: flex;
+  gap: 2px;
+}
+
+/* 履歴画面。1 列にして、日付の行と合計の行は固定し、記録の一覧だけを送る。 */
+.history {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 8px 0 20px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.history-head {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding-right: 12px;
+}
+
+.history-nav,
+.history-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.history-tools {
+  justify-self: end;
+  gap: 8px;
+}
+
+.history-date {
+  min-width: 116px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 「今日」と「今日へ」は同じ幅にして、日付を送っても矢印の位置を動かさない。 */
+.history-today {
+  width: 52px;
+  height: 22px;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 22px;
+  text-align: center;
+}
+
+button.history-today {
+  background: var(--control);
+  color: var(--text-dim);
+}
+
+button.history-today:hover {
+  background: var(--control-hover);
+  color: var(--text);
+}
+
+.history-add {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tomato) 18%, transparent);
+  color: var(--tomato);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.history-add:hover:enabled {
+  background: color-mix(in srgb, var(--tomato) 26%, transparent);
+}
+
+.history-add:disabled {
+  opacity: 0.5;
+}
+
+.history-summary {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-right: 12px;
+}
+
+.history-total {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-total b {
+  font-family:
+    ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.history-total span {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.history-ribbon {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  /* 6 時間ごとに細い目盛りを入れる。 */
+  background:
+    linear-gradient(90deg, var(--control-hover) 1px, transparent 1px) 0 0 / 25%
+    100%,
+    var(--control);
+}
+
+.history-ribbon i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 2px;
+  border-radius: 2px;
+  background: var(--hue, var(--text-dim));
+}
+
+[data-hue="0"] {
+  --hue: var(--sky);
+}
+
+[data-hue="1"] {
+  --hue: var(--amber);
+}
+
+[data-hue="2"] {
+  --hue: var(--violet);
+}
+
+[data-hue="3"] {
+  --hue: var(--rose);
+}
+
+[data-hue="4"] {
+  --hue: var(--leaf);
+}
+
+[data-hue="5"] {
+  --hue: var(--tomato);
+}
+
+.history > .alert {
+  padding-right: 12px;
+}
+
+.history-empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding-right: 12px;
+  color: var(--text-faint);
+}
+
+.history-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0 4px 12px 0;
+  list-style: none;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.history-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: start;
+  gap: 4px 10px;
+  padding: 10px 6px 10px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.history-item + .history-item {
+  margin-top: 6px;
+}
+
+/* 左の帯はカテゴリの色。カテゴリがなければ無彩色にする。 */
+.history-item::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--hue, var(--text-faint));
+}
+
+/* 予定時間の前に終えた集中は、帯を途切れさせて区別する。 */
+.history-item[data-outcome="ended_early"]::before {
+  background: repeating-linear-gradient(
+    var(--hue, var(--text-faint)) 0 4px,
+    transparent 4px 7px
+  );
+}
+
+.history-item p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.history-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.history-item-title[data-empty] {
+  font-weight: 400;
+  color: var(--text-faint);
+}
+
+.history-item-time {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.history-item-time span {
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.history-item p.history-item-notes {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.history-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 220px;
+  height: 20px;
+}
+
+.history-item-category {
+  min-width: 0;
+  height: 20px;
+  padding: 0 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hue) 16%, transparent);
+  color: var(--hue);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.history-item-length {
+  flex: none;
+  min-width: 40px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 編集と削除は、WebDriver からも押せるよう常に表示し、色だけ控えめにする。 */
+.history-item-tools {
+  display: flex;
+  margin: -4px 0;
+}
+
+.history-item-tools .icon-button {
+  color: var(--text-faint);
+}
+
+/* 記録の追加と編集。確認ダイアログより入力が多いので幅を広げる。 */
+.dialog.record-edit {
+  --control: var(--ink-600);
+  width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+
+.record-edit-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 2px 2px;
+  font-size: 12px;
+  color: var(--paper-dim);
+}
+
+.record-edit-head p {
+  color: var(--paper);
+}
+
+.record-field {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--ink-600);
+  color: var(--paper);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.record-field:focus {
+  border-color: var(--paper-faint);
+}
+
+.record-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.record-edit-dash {
+  color: var(--paper-dim);
+}
+
+.record-edit-length {
+  flex: 1;
+  min-width: 0;
+  padding-left: 4px;
+  white-space: nowrap;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--paper-dim);
+}
+
+.record-edit-length b {
+  margin-right: 6px;
+  color: var(--amber);
+}
+
+.record-edit .category-field {
+  min-width: 0;
+  max-width: 150px;
+}
+
+.record-notes {
+  height: 96px;
+  padding: 8px 10px;
+  line-height: 1.6;
+  resize: none;
+}
+
+.record-edit-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.dialog.record-edit .alert {
+  flex: 1;
+  min-width: 0;
+  max-height: 36px;
+  margin: 0;
+  color: var(--tomato);
 }
