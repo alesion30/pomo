@@ -30,7 +30,7 @@ export function Settings({
   useEffect(() => {
     void getVersion().then(setVersion).catch(console.error);
     const close = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !e.isComposing) onClose();
     };
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);

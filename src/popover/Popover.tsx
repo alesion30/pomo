@@ -17,6 +17,7 @@ export function Popover({
   dispatch,
   categories,
   onOpenSettings,
+  onOpenHistory,
 }: {
   appState: AppState;
   now: number;
@@ -24,6 +25,7 @@ export function Popover({
   dispatch: (command: Command) => void;
   categories: string[];
   onOpenSettings(): void;
+  onOpenHistory(): void;
 }) {
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -108,16 +110,28 @@ export function Popover({
           <div data-testid="phase" className="phase">
             {phase}
           </div>
-          <button
-            type="button"
-            className="icon-button"
-            data-testid="open-settings"
-            aria-label="設定"
-            title="設定（⌘,）"
-            onClick={onOpenSettings}
-          >
-            <GearIcon />
-          </button>
+          <div className="pane-tools">
+            <button
+              type="button"
+              className="icon-button"
+              data-testid="open-history"
+              aria-label="履歴"
+              title="履歴"
+              onClick={onOpenHistory}
+            >
+              <HistoryIcon />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              data-testid="open-settings"
+              aria-label="設定"
+              title="設定（⌘,）"
+              onClick={onOpenSettings}
+            >
+              <GearIcon />
+            </button>
+          </div>
         </div>
         <Dial
           remaining={
@@ -307,6 +321,26 @@ const confirms = {
   string,
   { message: string; detail: string; okLabel: string; command: Command }
 >;
+
+function HistoryIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
 
 function GearIcon() {
   return (

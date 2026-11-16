@@ -52,7 +52,14 @@ export function toRecord(
   input: RecordInput,
   base?: SessionRecord,
 ): SessionRecord {
-  const actual = Math.floor((input.endedAt - input.startedAt) / 1000);
+  // 時刻を変えていなければ実際の時間と結果を保つ。記録の時刻は秒に切り捨てた文字列なので、数え直すと 1 秒ずれることがある。
+  const sameTimes =
+    base !== undefined &&
+    Date.parse(base.started_at) === input.startedAt &&
+    Date.parse(base.ended_at) === input.endedAt;
+  const actual = sameTimes
+    ? base.actual_sec
+    : Math.floor((input.endedAt - input.startedAt) / 1000);
   const planned = base?.planned_sec ?? actual;
   return {
     id: base?.id ?? crypto.randomUUID(),
@@ -64,7 +71,11 @@ export function toRecord(
     ended_at: localIso8601(input.endedAt),
     planned_sec: planned,
     actual_sec: actual,
-    outcome: actual >= planned ? "completed" : "ended_early",
+    outcome: sameTimes
+      ? base.outcome
+      : actual >= planned
+        ? "completed"
+        : "ended_early",
   };
 }
 

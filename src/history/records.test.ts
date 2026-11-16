@@ -57,6 +57,20 @@ describe("history records", () => {
       outcome: "ended_early",
     });
   });
+  it("keeps actual time and outcome when only the text changes", () => {
+    const base = {
+      ...rec("x", at(16, 9)),
+      actual_sec: 1499,
+      outcome: "ended_early" as const,
+    };
+    expect(
+      toRecord({ ...toInput(base), title: "renamed" }, base),
+    ).toMatchObject({
+      title: "renamed",
+      actual_sec: 1499,
+      outcome: "ended_early",
+    });
+  });
   it("rejects an end not after the start or later than now", () => {
     const input = toInput(rec("x", at(16, 9)));
     expect(validate(input, at(16, 12))).toBeNull();

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { view } from "./domain/timer";
 import { BreakEnd } from "./front/BreakEnd";
 import { FocusEnd } from "./front/FocusEnd";
+import { History } from "./history/History";
 import { Popover } from "./popover/Popover";
 import { QuitConfirm } from "./QuitConfirm";
 import { Settings } from "./settings/Settings";
@@ -13,7 +14,8 @@ import { useTimer } from "./useTimer";
 export function Main() {
   const timer = useTimer();
   const { config, saveCategories } = useConfig();
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // 設定と履歴は、どちらか一方だけをタイマーの画面に重ねる。
+  const [overlay, setOverlay] = useState<"settings" | "history" | null>(null);
   const state = timer.appState;
   const categories = config?.categories ?? [];
   const due =
@@ -33,7 +35,7 @@ export function Main() {
     previousDue.current = dueScreen !== null;
   }, [dueScreen]);
   useEffect(() => {
-    const unlisten = listen("open-settings", () => setSettingsOpen(true));
+    const unlisten = listen("open-settings", () => setOverlay("settings"));
     return () => void unlisten.then((off) => off());
   }, []);
   // 一覧にないカテゴリは、進行中の集中に付いていれば残し、入力欄に残っているだけなら「なし」に戻す。
@@ -49,7 +51,7 @@ export function Main() {
     )
       dispatch({ type: "editDraft", category: "" });
   }, [config, phase, category, dispatch]);
-  const closeSettings = useCallback(() => setSettingsOpen(false), []);
+  const closeOverlay = useCallback(() => setOverlay(null), []);
   return (
     <>
       {dueScreen === "focus" ? (
@@ -61,18 +63,25 @@ export function Main() {
           dispatch={timer.dispatch}
           categories={categories}
         />
-      ) : settingsOpen ? (
+      ) : overlay === "settings" ? (
         <Settings
           config={config}
           phase={state.timer.phase}
           saveCategories={saveCategories}
-          onClose={closeSettings}
+          onClose={closeOverlay}
+        />
+      ) : overlay === "history" ? (
+        <History
+          now={timer.now}
+          categories={categories}
+          onClose={closeOverlay}
         />
       ) : (
         <Popover
           {...timer}
           categories={categories}
-          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenSettings={() => setOverlay("settings")}
+          onOpenHistory={() => setOverlay("history")}
         />
       )}
       <QuitConfirm />
