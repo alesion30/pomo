@@ -98,7 +98,7 @@ export function FocusEnd({
           </label>
           <textarea
             id="front-notes"
-            className="notes tall"
+            className="notes"
             data-testid="front-notes"
             aria-label="振り返り"
             placeholder="できたこと、気づいたこと、次にやること"

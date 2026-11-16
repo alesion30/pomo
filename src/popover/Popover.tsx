@@ -13,6 +13,7 @@ import { TitleField } from "../ui/TitleField";
 import { formatClock } from "./clockTime";
 import { TimeEditDialog, TimeRange } from "./TimeRange";
 import { UpdateButton } from "./UpdateButton";
+import { WrapUpSheet } from "./WrapUpSheet";
 
 export function Popover({
   appState,
@@ -39,6 +40,7 @@ export function Popover({
   const [confirming, setConfirming] = useState<keyof typeof confirms | null>(
     null,
   );
+  const [wrappingUp, setWrappingUp] = useState<"break" | "end" | null>(null);
   const [editingTimes, setEditingTimes] = useState(false);
   const closeTimes = useCallback(() => setEditingTimes(false), []);
   const timer = appState.timer;
@@ -57,10 +59,6 @@ export function Popover({
       ? { remainingSec: durations(scale).focus, overtimeSec: 0 }
       : time;
   const { done, current } = cycleProgress(appState, now, scale);
-  // 予定時間前の休憩と終了は、この集中を回数に数えないので確かめる。
-  const early = timer.phase === "focus" && time.remainingSec > 0;
-  const confirmIfEarly = (name: "break" | "end") =>
-    early ? setConfirming(name) : dispatch(confirms[name].command);
   const refreshUpdate = useCallback(() => {
     void invoke<string | null>("update_status")
       .then(setUpdateVersion)
@@ -103,6 +101,23 @@ export function Popover({
             dispatch(confirms[confirming].command);
           }}
           onCancel={() => setConfirming(null)}
+        />
+      )}
+      {wrappingUp && timer.phase === "focus" && (
+        <WrapUpSheet
+          name={wrappingUp}
+          title={appState.draft.title}
+          category={appState.draft.category}
+          notes={appState.draft.notes}
+          early={time.remainingSec > 0}
+          onNotes={(value) => edit("notes", value)}
+          onConfirm={() => {
+            setWrappingUp(null);
+            dispatch({
+              type: wrappingUp === "break" ? "startBreak" : "endFocus",
+            });
+          }}
+          onCancel={() => setWrappingUp(null)}
         />
       )}
       {editingTimes && timer.phase !== "idle" && (
@@ -198,16 +213,6 @@ export function Popover({
           </div>
         )}
       </section>
-      {timer.phase !== "break" && (
-        <textarea
-          className="notes"
-          data-testid="notes-input"
-          aria-label="振り返り"
-          value={appState.draft.notes}
-          onChange={(e) => edit("notes", e.target.value)}
-          placeholder="振り返り"
-        />
-      )}
       <div className="actions">
         {timer.phase === "idle" && (
           <button
@@ -244,7 +249,7 @@ export function Popover({
             type="button"
             data-testid="break-now"
             className="button wide"
-            onClick={() => confirmIfEarly("break")}
+            onClick={() => setWrappingUp("break")}
           >
             休憩
           </button>
@@ -254,7 +259,7 @@ export function Popover({
             type="button"
             data-testid="end"
             className="button wide"
-            onClick={() => confirmIfEarly("end")}
+            onClick={() => setWrappingUp("end")}
           >
             終了
           </button>
@@ -318,20 +323,6 @@ const confirms = {
     okLabel: "破棄する",
     command: { type: "discardBreak" },
   },
-  break: {
-    message: "休憩に入りますか？",
-    detail: "予定時間の前なので、この集中は回数に数えません。",
-    okLabel: "休憩する",
-    tone: "plain",
-    command: { type: "startBreak" },
-  },
-  end: {
-    message: "集中を終了しますか？",
-    detail: "予定時間の前なので、この集中は回数に数えません。",
-    okLabel: "終了する",
-    tone: "plain",
-    command: { type: "endFocus" },
-  },
 } satisfies Record<
   string,
   {
@@ -339,7 +330,6 @@ const confirms = {
     detail: string;
     okLabel: string;
     command: Command;
-    tone?: "danger" | "plain";
   }
 >;
 

@@ -49,7 +49,7 @@ describe("timer", () => {
     );
     // 休憩中は次の集中のタイトルを入れ、振り返りの欄は出さない。
     assert.equal(
-      await browser.$('[data-testid="notes-input"]').isExisting(),
+      await browser.$('[data-testid="wrapup-notes"]').isExisting(),
       false,
     );
     await browser.$('[data-testid="title-input"]').setValue("Next task");
