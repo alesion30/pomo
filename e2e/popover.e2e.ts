@@ -18,8 +18,7 @@ describe("popover memo inputs", () => {
       await browser.$('[data-testid="discard-break-confirm-ok"]').click();
     } else if (current !== "待機中") {
       await browser.$('[data-testid="end"]').click();
-      const confirm = browser.$('[data-testid="end-confirm-ok"]');
-      if (await confirm.isExisting()) await confirm.click();
+      await browser.$('[data-testid="end-confirm-ok"]').click();
     }
     const skip = browser.$('[data-testid="skip-break"]');
     if (await skip.isExisting()) await skip.click();
@@ -48,9 +47,9 @@ describe("popover memo inputs", () => {
     const title = await browser.$('[data-testid="title-input"]');
     await title.setValue("E2E task");
     await selectOption("category-input", "E2E category");
-    await browser.$('[data-testid="notes-input"]').setValue("memo line");
     await browser.$('[data-testid="start"]').click();
     await browser.$('[data-testid="end"]').click();
+    await browser.$('[data-testid="wrapup-notes"]').setValue("memo line");
     await browser.$('[data-testid="end-confirm-ok"]').click();
     const dataDir = process.env.XDG_DATA_HOME;
     assert(dataDir, "XDG_DATA_HOME must be set by the E2E runner");

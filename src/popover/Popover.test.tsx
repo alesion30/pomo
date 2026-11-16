@@ -18,12 +18,31 @@ describe("Popover focus actions", () => {
     ...structuredClone(initialState),
     timer: { phase: "focus" as const, startedAt: 0, plannedSec: 1500 },
   };
-  it("confirms break and end before the planned time; cancel dispatches nothing", () => {
+  it("shows no notes field on the timer screen while idle or focusing", () => {
+    const { rerender } = render(
+      <Popover
+        appState={structuredClone(initialState)}
+        now={0}
+        dispatch={() => {}}
+        {...extra}
+      />,
+    );
+    expect(screen.queryByRole("textbox", { name: "振り返り" })).toBeNull();
+    rerender(
+      <Popover appState={focusState} now={0} dispatch={() => {}} {...extra} />,
+    );
+    expect(screen.queryByRole("textbox", { name: "振り返り" })).toBeNull();
+  });
+  it("asks for notes on break and end before the planned time; cancel dispatches nothing", () => {
     const dispatch = vi.fn();
     render(
       <Popover appState={focusState} now={0} dispatch={dispatch} {...extra} />,
     );
     fireEvent.click(screen.getByTestId("break-now"));
+    expect(screen.getByTestId("break-confirm").textContent).toContain(
+      "回数に数えません",
+    );
+    expect(document.activeElement).toBe(screen.getByTestId("wrapup-notes"));
     expect(screen.getByTestId("break-confirm-ok").className).toContain(
       "primary",
     );
@@ -38,7 +57,7 @@ describe("Popover focus actions", () => {
     fireEvent.click(screen.getByTestId("end-confirm-ok"));
     expect(dispatch).toHaveBeenLastCalledWith({ type: "endFocus" });
   });
-  it("breaks and ends without confirmation after the planned time", () => {
+  it("asks for notes after the planned time too, without the early note", () => {
     const dispatch = vi.fn();
     render(
       <Popover
@@ -49,10 +68,55 @@ describe("Popover focus actions", () => {
       />,
     );
     fireEvent.click(screen.getByTestId("break-now"));
+    expect(screen.getByTestId("break-confirm").textContent).not.toContain(
+      "回数に数えません",
+    );
+    expect(dispatch).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("break-confirm-ok"));
     expect(dispatch).toHaveBeenLastCalledWith({ type: "startBreak" });
     fireEvent.click(screen.getByTestId("end"));
+    fireEvent.click(screen.getByTestId("end-confirm-ok"));
     expect(dispatch).toHaveBeenLastCalledWith({ type: "endFocus" });
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+  it("writes notes into the draft and shows the focus being closed", () => {
+    const dispatch = vi.fn();
+    const state = {
+      ...focusState,
+      draft: { title: "設計メモ", category: "設計", notes: "前半は順調" },
+    };
+    render(<Popover appState={state} now={0} dispatch={dispatch} {...extra} />);
+    fireEvent.click(screen.getByTestId("end"));
+    expect(screen.getByTestId("wrapup-session").textContent).toBe(
+      "設計メモ設計",
+    );
+    expect(screen.getByTestId("wrapup-notes")).toHaveProperty(
+      "value",
+      "前半は順調",
+    );
+    fireEvent.change(screen.getByTestId("wrapup-notes"), {
+      target: { value: "方針を決めた" },
+    });
+    expect(dispatch).toHaveBeenLastCalledWith({
+      type: "editDraft",
+      notes: "方針を決めた",
+    });
+  });
+  it("confirms with ⌘Enter and cancels with Escape", () => {
+    const dispatch = vi.fn();
+    render(
+      <Popover appState={focusState} now={0} dispatch={dispatch} {...extra} />,
+    );
+    fireEvent.click(screen.getByTestId("end"));
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByTestId("end-confirm")).toBeNull();
+    expect(dispatch).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("end"));
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(dispatch).not.toHaveBeenCalled();
+    fireEvent.keyDown(window, { key: "Enter", metaKey: true });
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "endFocus" });
+    expect(screen.queryByTestId("end-confirm")).toBeNull();
   });
   it("confirms discard; cancel dispatches nothing", () => {
     const dispatch = vi.fn();
@@ -80,7 +144,7 @@ describe("Popover focus actions", () => {
     render(
       <Popover appState={breakState} now={0} dispatch={dispatch} {...extra} />,
     );
-    expect(screen.queryByTestId("notes-input")).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "振り返り" })).toBeNull();
     expect(screen.queryByTestId("end")).toBeNull();
     fireEvent.click(screen.getByTestId("discard-break"));
     fireEvent.click(screen.getByTestId("discard-break-cancel"));
