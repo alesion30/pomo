@@ -92,7 +92,7 @@ async fn check(app: &tauri::AppHandle) -> Result<Option<String>, String> {
     Ok(Some(version))
 }
 
-/// 設定画面の「アップデートを確認」から呼ぶ。見つかった更新は定期の確認と同じく右下の表示にも出す。
+/// 設定画面の「アップデートを確認」から呼ぶ。見つかった更新は定期の確認と同じく保持し、`update-available` で知らせる。
 #[tauri::command]
 pub async fn check_update(app: tauri::AppHandle) -> Result<Option<String>, String> {
     check(&app).await

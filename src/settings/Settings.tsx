@@ -1,15 +1,15 @@
 import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
-import { UpdateButton } from "../popover/UpdateButton";
 import { type Colors, hueOf, PALETTE } from "../ui/categoryColor";
 import type { ConfigView } from "../useConfig";
+import { UpdateButton } from "./UpdateButton";
 
 type Check =
   | { state: "idle" }
   | { state: "checking" }
   | { state: "latest" }
-  | { state: "found"; version: string }
   | { state: "failed"; message: string };
 
 export function Settings({
@@ -25,7 +25,10 @@ export function Settings({
 }) {
   const [version, setVersion] = useState("");
   const [check, setCheck] = useState<Check>({ state: "idle" });
+  // 起動時と定期の確認で見つかった更新も、手動の確認で見つかった更新もここに入れる。
+  const [available, setAvailable] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
+  const [applyError, setApplyError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [newCategory, setNewCategory] = useState("");
   const [picking, setPicking] = useState<string | null>(null);
@@ -37,6 +40,30 @@ export function Settings({
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
   }, [onClose]);
+  useEffect(() => {
+    // 応答より先に update-available が届くことがあるので、null では消さない。
+    const readStatus = () =>
+      void invoke<string | null>("update_status")
+        .then((version) => {
+          if (version) setAvailable(version);
+        })
+        .catch(console.error);
+    // 隠れている間は JS が止まり、定期の確認のイベントを受け取れないことがあるので、表に出たときに読み直す。
+    const refresh = () => {
+      if (document.visibilityState === "visible") readStatus();
+    };
+    readStatus();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    const unlisten = listen<string>("update-available", (event) =>
+      setAvailable(event.payload),
+    );
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      void unlisten.then((off) => off());
+    };
+  }, []);
   const categories = config?.categories ?? [];
   const colors = config?.colors ?? {};
   const save = (next: string[], nextColors: Colors = colors) => {
@@ -73,22 +100,23 @@ export function Settings({
     setNewCategory("");
   };
   const runCheck = () => {
+    setApplyError(null);
     setCheck({ state: "checking" });
     invoke<string | null>("check_update")
-      .then((found) =>
-        setCheck(
-          found ? { state: "found", version: found } : { state: "latest" },
-        ),
-      )
+      .then((found) => {
+        if (found) setAvailable(found);
+        setCheck(found ? { state: "idle" } : { state: "latest" });
+      })
       .catch((error: unknown) =>
         setCheck({ state: "failed", message: String(error) }),
       );
   };
   const apply = () => {
+    setApplyError(null);
     setApplying(true);
     invoke<void>("apply_update").catch((error: unknown) => {
       setApplying(false);
-      setCheck({ state: "failed", message: String(error) });
+      setApplyError(String(error));
     });
   };
   const error = saveError ?? config?.error ?? null;
@@ -248,20 +276,23 @@ export function Settings({
             {check.state === "checking" ? "確認中…" : "アップデートを確認"}
           </button>
         </div>
-        {check.state === "latest" && (
+        {check.state === "latest" && available === null && (
           <small data-testid="update-latest">最新の版です</small>
         )}
-        {check.state === "found" && (
-          <UpdateButton
-            version={check.version}
-            phase={phase}
-            applying={applying}
-            onApply={apply}
-          />
-        )}
+        <UpdateButton
+          version={available}
+          phase={phase}
+          applying={applying}
+          onApply={apply}
+        />
         {check.state === "failed" && (
           <p role="alert" className="alert">
             {check.message}
+          </p>
+        )}
+        {applyError && (
+          <p role="alert" className="alert" data-testid="update-error">
+            更新に失敗しました: {applyError}
           </p>
         )}
         <button

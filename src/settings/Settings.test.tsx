@@ -1,11 +1,24 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mock = vi.hoisted(() => ({
   invoke: vi.fn((..._args: unknown[]) => Promise.resolve(null as unknown)),
+  listeners: new Map<string, (event: { payload: unknown }) => void>(),
 }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mock.invoke }));
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: (name: string, handler: (event: { payload: unknown }) => void) => {
+    mock.listeners.set(name, handler);
+    return Promise.resolve(() => mock.listeners.delete(name));
+  },
+}));
 vi.mock("@tauri-apps/api/app", () => ({
   getVersion: () => Promise.resolve("0.7.0"),
 }));
@@ -17,11 +30,14 @@ const config = {
   colors: {},
   error: null,
 };
-const renderSettings = (save = vi.fn(() => Promise.resolve())) => {
+const renderSettings = (
+  save = vi.fn(() => Promise.resolve()),
+  phase: "idle" | "focus" | "break" = "idle",
+) => {
   render(
     <Settings
       config={config}
-      phase="idle"
+      phase={phase}
       saveCategories={save}
       onClose={() => {}}
     />,
@@ -32,7 +48,8 @@ const renderSettings = (save = vi.fn(() => Promise.resolve())) => {
 describe("Settings", () => {
   afterEach(() => {
     cleanup();
-    mock.invoke.mockClear();
+    mock.invoke.mockReset();
+    mock.invoke.mockImplementation(() => Promise.resolve(null));
   });
   it("adds, renames, moves, and deletes categories through saveCategories", () => {
     const save = renderSettings();
@@ -91,6 +108,60 @@ describe("Settings", () => {
     expect((await screen.findByTestId("update-button")).textContent).toBe(
       "更新あり (v0.8.0)",
     );
+  });
+  it("shows an update found by the background check and applies it only while idle", async () => {
+    mock.invoke.mockImplementation((command) =>
+      Promise.resolve(command === "update_status" ? "0.8.0" : null),
+    );
+    renderSettings(undefined, "focus");
+    const button = (await screen.findByTestId(
+      "update-button",
+    )) as HTMLButtonElement;
+    expect(button.textContent).toBe("更新あり (v0.8.0)");
+    expect(button.disabled).toBe(true);
+    cleanup();
+    renderSettings();
+    fireEvent.click(await screen.findByTestId("update-button"));
+    expect(mock.invoke).toHaveBeenCalledWith("apply_update");
+  });
+  it("shows an update announced while open", async () => {
+    renderSettings();
+    expect(screen.queryByTestId("update-button")).toBeNull();
+    await act(async () => {
+      mock.listeners.get("update-available")?.({ payload: "0.9.0" });
+    });
+    expect(screen.getByTestId("update-button").textContent).toBe(
+      "更新あり (v0.9.0)",
+    );
+  });
+  it("reads the update again when the window comes back to the front", async () => {
+    renderSettings();
+    await act(async () => {});
+    expect(screen.queryByTestId("update-button")).toBeNull();
+    mock.invoke.mockImplementation((command) =>
+      Promise.resolve(command === "update_status" ? "0.9.0" : null),
+    );
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(screen.getByTestId("update-button").textContent).toBe(
+      "更新あり (v0.9.0)",
+    );
+  });
+  it("shows why applying the update failed", async () => {
+    mock.invoke.mockImplementation((command) =>
+      command === "apply_update"
+        ? Promise.reject("署名を検証できません")
+        : Promise.resolve(command === "update_status" ? "0.8.0" : null),
+    );
+    renderSettings();
+    fireEvent.click(await screen.findByTestId("update-button"));
+    expect((await screen.findByTestId("update-error")).textContent).toBe(
+      "更新に失敗しました: 署名を検証できません",
+    );
+    expect(
+      (screen.getByTestId("update-button") as HTMLButtonElement).disabled,
+    ).toBe(false);
   });
   it("shows a broken config error", () => {
     render(

@@ -2,13 +2,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const mock = vi.hoisted(() => ({
-  invoke: vi.fn(() => Promise.resolve([])),
-  listen: vi.fn(() => Promise.resolve(() => {})),
-}));
-vi.mock("@tauri-apps/api/core", () => ({ invoke: mock.invoke }));
-vi.mock("@tauri-apps/api/event", () => ({ listen: mock.listen }));
-
 import { initialState } from "../domain/timer";
 import { Popover } from "./Popover";
 
@@ -20,10 +13,7 @@ const extra = {
 };
 
 describe("Popover focus actions", () => {
-  afterEach(() => {
-    cleanup();
-    mock.invoke.mockClear();
-  });
+  afterEach(cleanup);
   const focusState = {
     ...structuredClone(initialState),
     timer: { phase: "focus" as const, startedAt: 0, plannedSec: 1500 },
@@ -173,5 +163,15 @@ describe("Popover time range", () => {
     fireEvent.click(screen.getByTestId("time-cancel"));
     expect(dispatch).not.toHaveBeenCalled();
     expect(screen.queryByTestId("time-edit")).toBeNull();
+  });
+});
+
+describe("Popover update info", () => {
+  afterEach(cleanup);
+  it("leaves update info to the settings screen", () => {
+    render(
+      <Popover appState={initialState} now={0} dispatch={vi.fn()} {...extra} />,
+    );
+    expect(screen.queryByTestId("update-button")).toBeNull();
   });
 });
