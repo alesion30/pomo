@@ -787,6 +787,52 @@ select.category-field {
   gap: 4px;
 }
 
+.category-item {
+  flex-wrap: wrap;
+}
+
+/* カテゴリの色の丸。押すと、その下に選べる色が並ぶ。 */
+.category-swatch {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0 4px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--hue, var(--text-dim));
+}
+
+.category-swatch[aria-pressed="true"] {
+  border-color: var(--text);
+}
+
+.color-picker {
+  flex-basis: 100%;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 2px 28px;
+}
+
+.color-auto {
+  height: 22px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.color-auto[aria-pressed="true"] {
+  border-color: var(--text);
+  color: var(--text);
+}
+
 .category-item + .category-item {
   margin-top: 4px;
 }

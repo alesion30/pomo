@@ -2,6 +2,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { UpdateButton } from "../popover/UpdateButton";
+import { type Colors, hueOf, PALETTE } from "../ui/categoryColor";
 import type { ConfigView } from "../useConfig";
 
 type Check =
@@ -19,7 +20,7 @@ export function Settings({
 }: {
   config: ConfigView | null;
   phase: "idle" | "focus" | "break";
-  saveCategories(categories: string[]): Promise<void>;
+  saveCategories(categories: string[], colors: Colors): Promise<void>;
   onClose(): void;
 }) {
   const [version, setVersion] = useState("");
@@ -27,6 +28,7 @@ export function Settings({
   const [applying, setApplying] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [newCategory, setNewCategory] = useState("");
+  const [picking, setPicking] = useState<string | null>(null);
   useEffect(() => {
     void getVersion().then(setVersion).catch(console.error);
     const close = (e: KeyboardEvent) => {
@@ -36,9 +38,17 @@ export function Settings({
     return () => window.removeEventListener("keydown", close);
   }, [onClose]);
   const categories = config?.categories ?? [];
-  const save = (next: string[]) => {
+  const colors = config?.colors ?? {};
+  const save = (next: string[], nextColors: Colors = colors) => {
     setSaveError(null);
-    saveCategories(next).catch((error: unknown) => setSaveError(String(error)));
+    saveCategories(next, nextColors).catch((error: unknown) =>
+      setSaveError(String(error)),
+    );
+  };
+  const choose = (category: string, color: string | null) => {
+    const { [category]: _, ...rest } = colors;
+    save(categories, color ? { ...rest, [category]: color } : rest);
+    setPicking(null);
   };
   const move = (index: number, delta: -1 | 1) => {
     const next = [...categories];
@@ -48,8 +58,14 @@ export function Settings({
     save(next);
   };
   const rename = (index: number, name: string) => {
-    if (name.trim() === categories[index]) return;
-    save(categories.map((c, i) => (i === index ? name : c)));
+    const old = categories[index];
+    if (old === undefined || name.trim() === old) return;
+    // 選んだ色は新しい名前に付け替える。
+    const { [old]: color, ...rest } = colors;
+    save(
+      categories.map((c, i) => (i === index ? name : c)),
+      color ? { ...rest, [name.trim()]: color } : rest,
+    );
   };
   const add = () => {
     if (!newCategory.trim()) return;
@@ -141,6 +157,17 @@ export function Settings({
           <ul className="category-list" data-testid="category-list">
             {categories.map((category, index) => (
               <li key={category} className="category-item">
+                <button
+                  type="button"
+                  className="category-swatch"
+                  data-testid="category-color"
+                  data-hue={hueOf(category, categories, colors)}
+                  aria-label={`${category} の色`}
+                  aria-expanded={picking === category}
+                  onClick={() =>
+                    setPicking(picking === category ? null : category)
+                  }
+                />
                 <input
                   className="category-name"
                   data-testid="category-name"
@@ -178,6 +205,34 @@ export function Settings({
                 >
                   ✕
                 </button>
+                {picking === category && (
+                  <fieldset
+                    className="color-picker"
+                    aria-label={`${category} の色`}
+                  >
+                    {PALETTE.map((color, hue) => (
+                      <button
+                        key={color.name}
+                        type="button"
+                        className="category-swatch"
+                        data-testid="category-color-option"
+                        data-hue={hue}
+                        aria-label={color.label}
+                        aria-pressed={colors[category] === color.name}
+                        onClick={() => choose(category, color.name)}
+                      />
+                    ))}
+                    <button
+                      type="button"
+                      className="color-auto"
+                      data-testid="category-color-auto"
+                      aria-pressed={colors[category] === undefined}
+                      onClick={() => choose(category, null)}
+                    >
+                      自動
+                    </button>
+                  </fieldset>
+                )}
               </li>
             ))}
           </ul>

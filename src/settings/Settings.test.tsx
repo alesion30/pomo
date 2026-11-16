@@ -12,7 +12,11 @@ vi.mock("@tauri-apps/api/app", () => ({
 
 import { Settings } from "./Settings";
 
-const config = { categories: ["開発", "調査", "雑務"], error: null };
+const config = {
+  categories: ["開発", "調査", "雑務"],
+  colors: {},
+  error: null,
+};
 const renderSettings = (save = vi.fn(() => Promise.resolve())) => {
   render(
     <Settings
@@ -36,16 +40,44 @@ describe("Settings", () => {
       target: { value: "設計" },
     });
     fireEvent.click(screen.getByTestId("category-add"));
-    expect(save).toHaveBeenLastCalledWith(["開発", "調査", "雑務", "設計"]);
+    expect(save).toHaveBeenLastCalledWith(["開発", "調査", "雑務", "設計"], {});
     const [first] = screen.getAllByTestId("category-name");
     if (!first) throw new Error("no category row");
     fireEvent.change(first, { target: { value: "実装" } });
     fireEvent.blur(first);
-    expect(save).toHaveBeenLastCalledWith(["実装", "調査", "雑務"]);
+    expect(save).toHaveBeenLastCalledWith(["実装", "調査", "雑務"], {});
     fireEvent.click(screen.getByRole("button", { name: "調査 を上へ" }));
-    expect(save).toHaveBeenLastCalledWith(["調査", "開発", "雑務"]);
+    expect(save).toHaveBeenLastCalledWith(["調査", "開発", "雑務"], {});
     fireEvent.click(screen.getByRole("button", { name: "雑務 を削除" }));
-    expect(save).toHaveBeenLastCalledWith(["開発", "調査"]);
+    expect(save).toHaveBeenLastCalledWith(["開発", "調査"], {});
+  });
+  it("chooses a color, moves it on rename, and clears it with auto", () => {
+    const save = vi.fn(() => Promise.resolve());
+    render(
+      <Settings
+        config={{ ...config, colors: { 調査: "rose" } }}
+        phase="idle"
+        saveCategories={save}
+        onClose={() => {}}
+      />,
+    );
+    const [, second] = screen.getAllByTestId("category-color");
+    expect(second?.getAttribute("data-hue")).toBe("3");
+    fireEvent.click(screen.getByRole("button", { name: "開発 の色" }));
+    fireEvent.click(screen.getByRole("button", { name: "緑" }));
+    expect(save).toHaveBeenLastCalledWith(["開発", "調査", "雑務"], {
+      開発: "leaf",
+      調査: "rose",
+    });
+    const names = screen.getAllByTestId("category-name");
+    fireEvent.change(names[1] as HTMLElement, { target: { value: "調べ物" } });
+    fireEvent.blur(names[1] as HTMLElement);
+    expect(save).toHaveBeenLastCalledWith(["開発", "調べ物", "雑務"], {
+      調べ物: "rose",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "調査 の色" }));
+    fireEvent.click(screen.getByTestId("category-color-auto"));
+    expect(save).toHaveBeenLastCalledWith(["開発", "調査", "雑務"], {});
   });
   it("shows the version and the result of an update check", async () => {
     mock.invoke.mockImplementation((command) =>
@@ -63,7 +95,11 @@ describe("Settings", () => {
   it("shows a broken config error", () => {
     render(
       <Settings
-        config={{ categories: [], error: "config.json を読めません" }}
+        config={{
+          categories: [],
+          colors: {},
+          error: "config.json を読めません",
+        }}
         phase="idle"
         saveCategories={vi.fn()}
         onClose={() => {}}

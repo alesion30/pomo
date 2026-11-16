@@ -61,7 +61,14 @@ const noon = rec("", at(16, 13), at(16, 13, 10), {
 const yesterday = rec("昨日のレビュー", at(15, 23, 50), at(16, 0, 20));
 
 const open = async (onClose = () => {}) => {
-  render(<History now={now} categories={["開発", "調査"]} onClose={onClose} />);
+  render(
+    <History
+      now={now}
+      categories={["開発", "調査"]}
+      colors={{ 調査: "rose" }}
+      onClose={onClose}
+    />,
+  );
   await waitFor(() =>
     expect(screen.getByTestId("history-add")).toHaveProperty("disabled", false),
   );
@@ -264,7 +271,9 @@ describe("History", () => {
     mock.invoke.mockImplementationOnce(() =>
       Promise.reject("sessions.jsonl を読めません"),
     );
-    render(<History now={now} categories={[]} onClose={() => {}} />);
+    render(
+      <History now={now} categories={[]} colors={{}} onClose={() => {}} />,
+    );
     expect((await screen.findByTestId("history-error")).textContent).toBe(
       "sessions.jsonl を読めません",
     );
