@@ -1095,11 +1095,17 @@ select.category-field:focus-visible {
   resize: none;
 }
 
+/* 理由の文はボタンと横に並べると幅が足りずに切れるので、ボタンの上の行に回す。 */
 .record-edit-foot {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 4px;
+}
+
+.record-edit-foot .alert {
+  flex-basis: 100%;
 }
 
 .history > .alert {
