@@ -15,7 +15,15 @@ describe("FocusEnd", () => {
   afterEach(() => document.body.replaceChildren());
   it("dispatches endFocus then startBreak", () => {
     const dispatch = vi.fn<(command: Command) => void>();
-    render(<FocusEnd state={state} now={1_500_000} dispatch={dispatch} />);
+    render(
+      <FocusEnd
+        state={state}
+        now={1_500_000}
+        dispatch={dispatch}
+        categories={[]}
+        colors={{}}
+      />,
+    );
     fireEvent.click(screen.getByTestId("front-start-break"));
     expect(dispatch.mock.calls).toEqual([
       [{ type: "endFocus" }],
@@ -24,7 +32,15 @@ describe("FocusEnd", () => {
   });
   it("dispatches endFocus then skipBreak", () => {
     const dispatch = vi.fn<(command: Command) => void>();
-    render(<FocusEnd state={state} now={1_500_000} dispatch={dispatch} />);
+    render(
+      <FocusEnd
+        state={state}
+        now={1_500_000}
+        dispatch={dispatch}
+        categories={[]}
+        colors={{}}
+      />,
+    );
     fireEvent.click(screen.getByTestId("front-skip"));
     expect(dispatch.mock.calls).toEqual([
       [{ type: "endFocus" }],
@@ -33,7 +49,15 @@ describe("FocusEnd", () => {
   });
   it("extends and edits notes through Commands", () => {
     const dispatch = vi.fn<(command: Command) => void>();
-    render(<FocusEnd state={state} now={1_500_000} dispatch={dispatch} />);
+    render(
+      <FocusEnd
+        state={state}
+        now={1_500_000}
+        dispatch={dispatch}
+        categories={[]}
+        colors={{}}
+      />,
+    );
     fireEvent.click(screen.getByTestId("front-plus5"));
     fireEvent.change(screen.getByTestId("front-notes"), {
       target: { value: "review" },
@@ -50,6 +74,8 @@ describe("FocusEnd", () => {
         state={{ ...state, timer: { phase: "idle", offer: "short_break" } }}
         now={1_500_000}
         dispatch={dispatch}
+        categories={[]}
+        colors={{}}
       />,
     );
     expect(screen.queryByTestId("front-plus5")).toBeNull();
@@ -77,6 +103,7 @@ describe("BreakEnd", () => {
         now={300_000}
         dispatch={dispatch}
         categories={[]}
+        colors={{}}
       />,
     );
     fireEvent.click(screen.getByTestId("front-start"));

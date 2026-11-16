@@ -71,6 +71,7 @@ export function TimeEditDialog({
           if (startedAt !== null && !error) onSave(startedAt, total);
         }}
       >
+        <p className="dialog-title">開始と時間</p>
         <label className="time-edit-row">
           <span>開始</span>
           <input
@@ -103,11 +104,18 @@ export function TimeEditDialog({
           />
           <span className="unit">分</span>
         </div>
-        {error && (
-          <small role="alert" className="alert" data-testid="time-error">
-            {error}
-          </small>
-        )}
+        <div className="time-edit-row">
+          <span>終了</span>
+          {error ? (
+            <small role="alert" className="alert" data-testid="time-error">
+              {error}
+            </small>
+          ) : (
+            <output data-testid="time-end">
+              {formatClock((startedAt ?? timer.startedAt) + total * 60_000)}
+            </output>
+          )}
+        </div>
         <div className="dialog-actions">
           <button
             type="button"

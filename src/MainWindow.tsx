@@ -55,13 +55,20 @@ export function Main() {
   return (
     <>
       {dueScreen === "focus" ? (
-        <FocusEnd state={state} now={timer.now} dispatch={timer.dispatch} />
+        <FocusEnd
+          state={state}
+          now={timer.now}
+          dispatch={timer.dispatch}
+          categories={categories}
+          colors={config?.colors ?? {}}
+        />
       ) : dueScreen === "break" ? (
         <BreakEnd
           state={state}
           now={timer.now}
           dispatch={timer.dispatch}
           categories={categories}
+          colors={config?.colors ?? {}}
         />
       ) : overlay === "settings" ? (
         <Settings
@@ -81,6 +88,7 @@ export function Main() {
         <Popover
           {...timer}
           categories={categories}
+          colors={config?.colors ?? {}}
           onOpenSettings={() => setOverlay("settings")}
           onOpenHistory={() => setOverlay("history")}
         />
