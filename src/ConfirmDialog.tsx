@@ -3,7 +3,6 @@ export function ConfirmDialog({
   message,
   detail,
   okLabel,
-  tone = "danger",
   onConfirm,
   onCancel,
 }: {
@@ -11,7 +10,6 @@ export function ConfirmDialog({
   message: string;
   detail: string;
   okLabel: string;
-  tone?: "danger" | "plain";
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -36,7 +34,7 @@ export function ConfirmDialog({
           </button>
           <button
             type="button"
-            className={`button ${tone === "danger" ? "danger" : "primary"}`}
+            className="button danger"
             data-testid={`${name}-confirm-ok`}
             onClick={onConfirm}
           >
