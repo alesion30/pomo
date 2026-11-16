@@ -71,7 +71,14 @@ describe("BreakEnd", () => {
   };
   it("starts focus in one command and confirms discard", () => {
     const dispatch = vi.fn<(command: Command) => void>();
-    render(<BreakEnd state={breakState} now={300_000} dispatch={dispatch} />);
+    render(
+      <BreakEnd
+        state={breakState}
+        now={300_000}
+        dispatch={dispatch}
+        categories={[]}
+      />,
+    );
     fireEvent.click(screen.getByTestId("front-start"));
     fireEvent.click(screen.getByTestId("front-discard-break"));
     fireEvent.click(screen.getByTestId("discard-break-confirm-ok"));

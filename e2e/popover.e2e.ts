@@ -2,12 +2,13 @@ import { strict as assert } from "node:assert";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { browser } from "@wdio/globals";
+import { selectOption } from "./select";
 
 declare function describe(title: string, fn: () => void): void;
 declare function it(title: string, fn: () => Promise<void>): void;
 
 describe("popover memo inputs", () => {
-  it("saves focus notes and suggests recent categories", async () => {
+  it("saves focus notes with a category added in settings", async () => {
     execFileSync("scripts/pomoctl", ["tray-click"], { encoding: "utf8" });
     // 前の spec が集中や休憩を残していることがあるので、待機に戻してから始める。
     const phase = browser.$('[data-testid="phase"]');
@@ -23,9 +24,22 @@ describe("popover memo inputs", () => {
     const skip = browser.$('[data-testid="skip-break"]');
     if (await skip.isExisting()) await skip.click();
     await browser.waitUntil(async () => (await phase.getText()) === "待機中");
+    const configDir = process.env.XDG_CONFIG_HOME;
+    assert(configDir, "XDG_CONFIG_HOME must be set by the E2E runner");
+    // 設定画面でカテゴリを足すと、config.json に書かれ、選択欄に出る。
+    await browser.$('[data-testid="open-settings"]').click();
+    const newCategory = browser.$('[data-testid="category-new"]');
+    await newCategory.setValue("E2E category");
+    await browser.$('[data-testid="category-add"]').click();
+    await browser.waitUntil(() =>
+      readFileSync(`${configDir}/pomo/config.json`, "utf8").includes(
+        "E2E category",
+      ),
+    );
+    await browser.$('[data-testid="settings-close"]').click();
     const title = await browser.$('[data-testid="title-input"]');
     await title.setValue("E2E task");
-    await browser.$('[data-testid="category-input"]').setValue("E2E category");
+    await selectOption("category-input", "E2E category");
     await browser.$('[data-testid="notes-input"]').setValue("memo line");
     await browser.$('[data-testid="start"]').click();
     await browser.$('[data-testid="end"]').click();
@@ -43,15 +57,15 @@ describe("popover memo inputs", () => {
     const record = lastRecord();
     assert.equal(record.category, "E2E category");
     assert.equal(record.notes, "memo line");
-    await browser.$('[data-testid="start"]').click();
-    await browser.$('[data-testid="category-input"]').setValue("E");
-    await browser.$('[data-testid="category-suggestion"]').waitForDisplayed();
-    assert.equal(
-      await browser.$('[data-testid="category-suggestion"]').getText(),
-      "E2E category",
+    // 次の spec のために、足したカテゴリを消しておく。
+    await browser.$('[data-testid="open-settings"]').click();
+    await browser.$('[data-testid="category-delete"]').click();
+    await browser.waitUntil(
+      () =>
+        !readFileSync(`${configDir}/pomo/config.json`, "utf8").includes(
+          "E2E category",
+        ),
     );
-    // spec の間でデータを共有するので、次の spec のために待機へ戻す。
-    await browser.$('[data-testid="end"]').click();
-    await browser.$('[data-testid="end-confirm-ok"]').click();
+    await browser.$('[data-testid="settings-close"]').click();
   });
 });
