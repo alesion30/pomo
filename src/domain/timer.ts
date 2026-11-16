@@ -17,7 +17,7 @@ export type Command =
   | { type: "discardFocus" }
   | { type: "startBreak" }
   | { type: "skipBreak" }
-  | { type: "endBreak" }
+  | { type: "discardBreak" }
   | { type: "adjust"; deltaSec: 300 | -300 }
   | { type: "editDraft"; title?: string; category?: string; notes?: string };
 
@@ -48,6 +48,11 @@ export function transition(
   if (command.type === "editDraft") {
     const { type: _, ...fields } = command;
     state.draft = { ...state.draft, ...fields };
+  }
+  if (command.type === "startFocus" && state.timer.phase === "break") {
+    // 休憩はその時点までを記録してから、次の集中を始める。
+    const breakRecord = endBreak(state, state.timer, now);
+    return { ...transition(state, command, now, scale), record: breakRecord };
   }
   if (command.type === "startFocus" && state.timer.phase === "idle") {
     if (
@@ -113,24 +118,8 @@ export function transition(
     };
   if (command.type === "skipBreak" && state.timer.phase === "idle")
     state.timer = { phase: "idle" };
-  if (command.type === "endBreak" && state.timer.phase === "break") {
-    const phase = state.timer;
-    const actual = Math.floor(Math.max(0, now - phase.startedAt) / 1000);
-    record = makeRecord({
-      kind: phase.kind,
-      title: null,
-      category: null,
-      notes: null,
-      startedAt: phase.startedAt,
-      endedAt: now,
-      planned_sec: phase.plannedSec,
-      actual_sec: actual,
-      outcome: actual >= phase.plannedSec ? "completed" : "ended_early",
-    });
-    state.streak.lastPhaseEndedAt = now;
-    if (phase.kind === "long_break") state.streak.completed = 0;
+  if (command.type === "discardBreak" && state.timer.phase === "break")
     state.timer = { phase: "idle" };
-  }
   if (command.type === "adjust" && state.timer.phase !== "idle") {
     const timer = state.timer;
     if (command.deltaSec > 0) timer.plannedSec += config.adjust;
@@ -144,4 +133,26 @@ export function transition(
       );
   }
   return { state, record };
+}
+
+function endBreak(
+  state: AppState,
+  phase: Extract<TimerState, { phase: "break" }>,
+  now: number,
+): SessionRecord {
+  const actual = Math.floor(Math.max(0, now - phase.startedAt) / 1000);
+  state.streak.lastPhaseEndedAt = now;
+  if (phase.kind === "long_break") state.streak.completed = 0;
+  state.timer = { phase: "idle" };
+  return makeRecord({
+    kind: phase.kind,
+    title: null,
+    category: null,
+    notes: null,
+    startedAt: phase.startedAt,
+    endedAt: now,
+    planned_sec: phase.plannedSec,
+    actual_sec: actual,
+    outcome: actual >= phase.plannedSec ? "completed" : "ended_early",
+  });
 }

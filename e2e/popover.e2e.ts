@@ -11,7 +11,11 @@ describe("popover memo inputs", () => {
     execFileSync("scripts/pomoctl", ["tray-click"], { encoding: "utf8" });
     // 前の spec が集中や休憩を残していることがあるので、待機に戻してから始める。
     const phase = browser.$('[data-testid="phase"]');
-    if ((await phase.getText()) !== "待機中") {
+    const current = await phase.getText();
+    if (current.endsWith("休憩")) {
+      await browser.$('[data-testid="discard-break"]').click();
+      await browser.$('[data-testid="discard-break-confirm-ok"]').click();
+    } else if (current !== "待機中") {
       await browser.$('[data-testid="end"]').click();
       const confirm = browser.$('[data-testid="end-confirm-ok"]');
       if (await confirm.isExisting()) await confirm.click();

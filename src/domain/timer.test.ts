@@ -138,3 +138,43 @@ describe("draft and time scale", () => {
     expect(record).toMatchObject({ title: "", category: "", notes: "" });
   });
 });
+
+describe("break actions", () => {
+  const breakState = (kind: "short_break" | "long_break"): AppState => ({
+    ...structuredClone(initialState),
+    timer: { phase: "break", kind, startedAt: 0, plannedSec: 5 },
+    streak: { completed: 4, lastPhaseEndedAt: 0 },
+    draft: { title: "next", category: "dev", notes: "" },
+  });
+  it("records the break and starts focus in one step", () => {
+    const result = transition(
+      breakState("long_break"),
+      { type: "startFocus" },
+      2_000,
+      60,
+    );
+    expect(result.record).toMatchObject({
+      kind: "long_break",
+      actual_sec: 2,
+      outcome: "ended_early",
+    });
+    expect(result.state.timer).toEqual({
+      phase: "focus",
+      startedAt: 2_000,
+      plannedSec: 25,
+    });
+    expect(result.state.streak).toEqual({
+      completed: 0,
+      lastPhaseEndedAt: 2_000,
+    });
+    expect(result.state.draft.title).toBe("next");
+  });
+  it("discards the break without a record or streak change", () => {
+    const app = breakState("short_break");
+    const result = transition(app, { type: "discardBreak" }, 2_000, 60);
+    expect(result.record).toBeNull();
+    expect(result.state.timer).toEqual({ phase: "idle" });
+    expect(result.state.streak).toEqual(app.streak);
+    expect(result.state.draft).toEqual(app.draft);
+  });
+});

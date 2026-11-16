@@ -57,4 +57,27 @@ describe("Popover focus actions", () => {
     fireEvent.click(screen.getByTestId("discard-confirm-ok"));
     expect(dispatch).toHaveBeenLastCalledWith({ type: "discardFocus" });
   });
+  it("offers start-focus and confirmed discard during a break, without notes", () => {
+    const dispatch = vi.fn();
+    const breakState = {
+      ...structuredClone(initialState),
+      timer: {
+        phase: "break" as const,
+        kind: "short_break" as const,
+        startedAt: 0,
+        plannedSec: 300,
+      },
+    };
+    render(<Popover appState={breakState} now={0} dispatch={dispatch} />);
+    expect(screen.queryByTestId("notes-input")).toBeNull();
+    expect(screen.queryByTestId("end")).toBeNull();
+    fireEvent.click(screen.getByTestId("discard-break"));
+    fireEvent.click(screen.getByTestId("discard-break-cancel"));
+    expect(dispatch).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("discard-break"));
+    fireEvent.click(screen.getByTestId("discard-break-confirm-ok"));
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "discardBreak" });
+    fireEvent.click(screen.getByTestId("start-focus"));
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "startFocus" });
+  });
 });

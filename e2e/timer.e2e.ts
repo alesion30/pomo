@@ -45,7 +45,29 @@ describe("timer", () => {
       async () =>
         (await browser.$('[data-testid="phase"]').getText()) === "短い休憩",
     );
-    await browser.$('[data-testid="end"]').click();
+    // 休憩中は次の集中のタイトルを入れ、振り返りの欄は出さない。
+    assert.equal(
+      await browser.$('[data-testid="notes-input"]').isExisting(),
+      false,
+    );
+    await browser.$('[data-testid="title-input"]').setValue("Next task");
+    await browser.$('[data-testid="start-focus"]').click();
+    await browser.waitUntil(
+      async () =>
+        (await browser.$('[data-testid="phase"]').getText()) === "集中",
+    );
+    assert.equal(
+      await browser.$('[data-testid="title-input"]').getValue(),
+      "Next task",
+    );
+    await browser.$('[data-testid="break-now"]').click();
+    await browser.$('[data-testid="break-confirm-ok"]').click();
+    await browser.$('[data-testid="discard-break"]').click();
+    await browser.$('[data-testid="discard-break-confirm-ok"]').click();
+    await browser.waitUntil(
+      async () =>
+        (await browser.$('[data-testid="phase"]').getText()) === "待機中",
+    );
   });
   it("discards focus after confirmation", async () => {
     execFileSync("scripts/pomoctl", ["tray-click"]);
