@@ -14,9 +14,9 @@
       {
         "title": "pomo",
         "label": "main",
-        "width": 680,
-        "height": 400,
-        "backgroundColor": "#0f1013",
+        "width": 360,
+        "height": 544,
+        "backgroundColor": "#17181b",
         "theme": "Dark",
         "visible": false,
         "decorations": true,
@@ -32,7 +32,9 @@
     "active": true,
     "createUpdaterArtifacts": true,
     "targets": "all",
-    "macOS": { "signingIdentity": "-" },
+    "macOS": {
+      "signingIdentity": "-"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

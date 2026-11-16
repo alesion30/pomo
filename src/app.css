@@ -2,82 +2,109 @@
 :root {
   color-scheme: dark;
 
-  --ink-900: #0f1013;
-  --ink-800: #17181c;
-  --ink-700: #23252b;
-  --ink-600: #2f323a;
-  --ink-line: #2a2d34;
+  /* --- 元の色 --- */
+  --ink-900: #17181b; /* ウィンドウの地。index.html と tauri.conf.json にも同じ値を書く */
+  --ink-800: #1f2024; /* 入力欄 */
+  --ink-700: #292b30; /* 押せる面、ダイアログの面 */
+  --ink-600: #363940; /* 押せる面の hover、ダイアログの中の押せる面 */
+  --ink-line: #303238;
   --paper: #eeeff1;
-  --paper-dim: #a5a9b1;
-  --paper-faint: #8b9099;
+  --paper-dim: #a9adb5;
+  --paper-faint: #858a93;
+  --ink: #15161a; /* 色面の上の文字 */
 
   --tomato: #ff6a55;
-  --tomato-ink: #2a0a05;
-  --tomato-deep: #94301f;
-  --tomato-dusk: #45170f;
   --leaf: #45d19b;
-  --leaf-deep: #146248;
-  --leaf-dusk: #0c3329;
-  /* 履歴でカテゴリを見分ける色。トマトと葉に続けて使う。 */
   --sky: #6fb1ff;
   --amber: #f0b95a;
   --violet: #b09bff;
   --rose: #f58cc0;
 
+  --tomato-deep: #b83a25;
+  --tomato-dusk: #5a1e13;
+  --leaf-deep: #17785a;
+  --leaf-dusk: #0d3d2f;
   --cream: #fff6f2;
-  --cream-ink: #1b1c20;
   --on-wash: #ffffff;
   --on-wash-dim: rgb(255 255 255 / 0.82);
-  --wash-shade: rgb(0 0 0 / 0.3);
-  --wash-control: rgb(0 0 0 / 0.26);
-  --wash-control-hover: rgb(0 0 0 / 0.4);
-  --wash-line: rgb(255 255 255 / 0.12);
-  --scrim: rgb(6 7 9 / 0.7);
+  --wash-field: rgb(0 0 0 / 0.22);
+  --wash-control: rgb(0 0 0 / 0.28);
+  --wash-control-hover: rgb(0 0 0 / 0.42);
+  --wash-line: rgb(255 255 255 / 0.18);
+  --hand-light: #ffffff; /* 針を扇より明るくするために混ぜる白 */
+  --hub-edge: rgb(0 0 0 / 0.3); /* 軸の縁 */
+  --scrim: rgb(8 9 11 / 0.68);
   --shadow: rgb(0 0 0 / 0.5);
 
-  /* 画面ごとに差し替える役割別の色。既定は待機。 */
+  /* --- 役割別の色。既定は待機。画面の data-tone で差し替える --- */
   --bg: var(--ink-900);
-  --card: var(--ink-800);
+  --field: var(--ink-800);
   --control: var(--ink-700);
   --control-hover: var(--ink-600);
   --line: var(--ink-line);
   --text: var(--paper);
   --text-dim: var(--paper-dim);
   --text-faint: var(--paper-faint);
-  --accent: var(--paper-faint);
-  --ring: var(--ink-700);
-  --primary: var(--tomato);
-  --on-primary: var(--tomato-ink);
+  --accent: var(--tomato);
+  --on-accent: var(--ink);
+  /* --primary はここで決めない。var(--accent) を根で解決した値が継がれ、カテゴリの色にならないため。 */
+}
+
+/* カテゴリの色。data-hue の番号は src/ui/categoryColor.ts の PALETTE の並び。 */
+[data-hue="0"] {
+  --hue: var(--sky);
+}
+[data-hue="1"] {
+  --hue: var(--amber);
+}
+[data-hue="2"] {
+  --hue: var(--violet);
+}
+[data-hue="3"] {
+  --hue: var(--rose);
+}
+[data-hue="4"] {
+  --hue: var(--leaf);
+}
+[data-hue="5"] {
+  --hue: var(--tomato);
+}
+
+/* 待機と集中は、選んだカテゴリの色を差し色にする。カテゴリがなければトマト。 */
+[data-tone="idle"],
+[data-tone="focus"] {
+  --accent: var(--hue, var(--tomato));
 }
 
 [data-tone="focus"] {
-  --accent: var(--tomato);
-  --ring: var(--tomato);
   --bg:
     radial-gradient(
-      380px 380px at 140px 50%,
-      color-mix(in srgb, var(--tomato) 13%, transparent),
+      230px 230px at 50% 262px,
+      color-mix(in srgb, var(--accent) 10%, transparent),
       transparent 72%
     ),
     var(--ink-900);
 }
 
+/* 休憩はカテゴリに関係なく葉の緑。 */
 [data-tone="break"] {
   --accent: var(--leaf);
-  --ring: var(--leaf);
   --bg:
     radial-gradient(
-      380px 380px at 140px 50%,
-      color-mix(in srgb, var(--leaf) 11%, transparent),
+      260px 260px at 50% 284px,
+      color-mix(in srgb, var(--leaf) 15%, transparent),
       transparent 72%
     ),
-    var(--ink-900);
+    linear-gradient(
+      var(--ink-900) 30%,
+      color-mix(in srgb, var(--leaf) 8%, var(--ink-900))
+    );
 }
 
-/* 予定時間に達した画面は、進行中の淡い光ではなく面全体の色で知らせる。 */
+/* 区切りは、面全体の色で知らせる。 */
 [data-tone="focus-due"],
 [data-tone="break-due"] {
-  --card: var(--wash-shade);
+  --field: var(--wash-field);
   --control: var(--wash-control);
   --control-hover: var(--wash-control-hover);
   --line: var(--wash-line);
@@ -85,17 +112,16 @@
   --text-dim: var(--on-wash-dim);
   --text-faint: var(--on-wash-dim);
   --accent: var(--on-wash);
-  --ring: var(--on-wash);
   --primary: var(--cream);
-  --on-primary: var(--cream-ink);
+  --on-primary: var(--ink);
 }
 
 [data-tone="focus-due"] {
-  --bg: linear-gradient(155deg, var(--tomato-deep), var(--tomato-dusk));
+  --bg: linear-gradient(165deg, var(--tomato-deep), var(--tomato-dusk));
 }
 
 [data-tone="break-due"] {
-  --bg: linear-gradient(155deg, var(--leaf-deep), var(--leaf-dusk));
+  --bg: linear-gradient(165deg, var(--leaf-deep), var(--leaf-dusk));
 }
 
 * {
@@ -126,6 +152,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
   color: inherit;
@@ -151,575 +178,53 @@ textarea {
   outline-offset: 2px;
 }
 
+/* 画面の骨組み。主の操作がどの状態でも下端に来るよう、1 列に並べる。 */
 .screen {
+  position: relative;
   height: 100%;
-  display: grid;
-  grid-template-columns: 252px minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
+  padding: 10px 16px 12px;
   background: var(--bg);
   color: var(--text);
 }
 
-.pane-time {
-  min-height: 0;
+.topbar {
+  flex: none;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  justify-items: center;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 16px 20px 18px;
+  height: 28px;
 }
 
 .phase {
   justify-self: start;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+[data-tone="idle"] .phase {
+  color: var(--text-dim);
+}
+
+.screen-title {
+  justify-self: start;
   margin: 0;
   font-size: 13px;
   font-weight: 600;
   line-height: 20px;
-  color: var(--text);
 }
 
-.phase::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-
-.dial {
-  position: relative;
-  width: 204px;
-  aspect-ratio: 1;
-}
-
-.dial > svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-}
-
-.dial-track,
-.dial-lit {
-  fill: none;
-  stroke-width: 6;
-}
-
-.dial-track {
-  stroke: var(--control);
-}
-
-.dial-lit {
-  stroke: var(--ring);
-  stroke-linecap: round;
-  transition:
-    stroke-dasharray 1s linear,
-    stroke-dashoffset 1s linear;
-}
-
-/* 予定時間を過ぎている間は、リングをゆっくり明滅させて動いていることを示す。 */
-[data-tone$="-due"] .dial-lit {
-  animation: breathe 2.8s ease-in-out infinite;
-}
-
-@keyframes breathe {
-  50% {
-    opacity: 0.45;
-  }
-}
-
-.dial-center {
-  position: absolute;
-  inset: 0;
+.pane-tools {
+  grid-column: 3;
+  justify-self: end;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.clock {
-  font-family:
-    ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 46px;
-  font-weight: 500;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
-  color: var(--text);
-}
-
-.clock[data-length="6"] {
-  font-size: 42px;
-}
-
-.clock[data-length="7"] {
-  font-size: 35px;
-}
-
-[data-tone="idle"] .clock {
-  font-size: 40px;
-  font-weight: 400;
-  color: var(--text-faint);
-}
-
-.clock-caption {
-  font-size: 11px;
-  line-height: 1;
-  letter-spacing: 0.08em;
-  color: var(--text-dim);
-}
-
-.dial-check {
-  width: 64px;
-  height: 64px;
-  fill: none;
-  stroke: var(--text);
-  stroke-width: 3.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-/* 開始と終了の時刻、その下に ±5 分。待機中も高さを取り、フェーズが変わってもダイヤルの位置を動かさない。 */
-.adjust {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  height: 64px;
-}
-
-.adjust button {
-  height: 28px;
-  padding: 0 14px;
-  white-space: nowrap;
-  border: 0;
-  border-radius: 999px;
-  background: var(--control);
-  color: var(--text-dim);
-  font-size: 12px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.adjust button:hover {
-  background: var(--control-hover);
-  color: var(--text);
-}
-
-/* 開始と予定の終了。押せることが分かるよう、±5 分と違って枠線で囲む。 */
-.adjust .time-range {
-  flex-basis: 100%;
-  max-width: 160px;
-  white-space: nowrap;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--text);
-  padding: 0 12px;
-}
-
-.pane-note {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 12px 12px 0;
-}
-
-.card {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--card);
-}
-
-.card.compact {
-  flex: none;
-}
-
-.card-label {
-  margin: 0 4px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--text-dim);
-}
-
-.title-field,
-.notes {
-  display: block;
-  width: 100%;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  resize: none;
-  outline: none;
-}
-
-.title-field:hover,
-.notes:hover {
-  background: color-mix(in srgb, var(--control) 45%, transparent);
-}
-
-.title-field:focus,
-.notes:focus {
-  background: var(--control);
-}
-
-.title-field {
-  flex: none;
-  padding: 5px 8px;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.45;
-  /* 対応する WebView では内容に合わせて 1〜3 行に伸縮する。非対応なら rows の 2 行のまま。 */
-  field-sizing: content;
-  min-height: calc(1.45em + 10px);
-  max-height: calc(4.35em + 10px);
-}
-
-.category-row {
-  flex: none;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.category-field {
-  height: 28px;
-  max-width: 100%;
-  border-radius: 999px;
-  font-size: 12px;
-  line-height: 26px;
-}
-
-.category-field {
-  width: 148px;
-  padding: 0 12px;
-  border: 1px solid transparent;
-  background: var(--control);
-  outline: none;
-}
-
-/* 選択欄は OS の部品の見た目を消し、入力欄と同じ丸い形にそろえる。 */
-select.category-field {
-  appearance: none;
-  min-width: 148px;
-  width: auto;
-  max-width: 100%;
-  padding-right: 28px;
-  color: var(--text);
-  background:
-    linear-gradient(45deg, transparent 50%, var(--text-dim) 50%) right 15px
-    center / 5px 5px no-repeat,
-    linear-gradient(135deg, var(--text-dim) 50%, transparent 50%) right 10px
-    center / 5px 5px no-repeat,
-    var(--control);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 対応する WebView では、長いカテゴリも切れないよう入力に合わせて幅を広げる。 */
-@supports (field-sizing: content) {
-  .category-field {
-    width: auto;
-    min-width: 148px;
-    field-sizing: content;
-  }
-}
-
-.category-field:focus {
-  border-color: var(--accent);
-}
-
-.notes {
-  flex: 1;
-  min-height: 40px;
-  padding: 6px 8px;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.session-title,
-.session-category {
-  flex: none;
-  margin: 0 8px;
-  overflow-wrap: anywhere;
-  -webkit-user-select: text;
-  user-select: text;
-}
-
-.session-title {
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.45;
-}
-
-.session-category {
-  margin-top: -6px;
-  font-size: 12px;
-  color: var(--text-dim);
-}
-
-.actions {
-  flex: none;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.button {
-  height: 36px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--control);
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.button:hover {
-  background: var(--control-hover);
-}
-
-.button.primary {
-  flex: 1;
-  background: var(--primary);
-  color: var(--on-primary);
-}
-
-.button.primary:hover,
-.button.danger:hover {
-  filter: brightness(1.08);
-}
-
-.button.wide {
-  flex: 1;
-}
-
-.button.ghost {
-  padding: 0 10px;
-  background: transparent;
-  color: var(--text-dim);
-}
-
-.button.ghost:hover {
-  background: var(--control);
-  color: var(--tomato);
-}
-
-.button.danger {
-  background: var(--tomato);
-  color: var(--tomato-ink);
-}
-
-/* 休憩の提示だけが残った集中終了は、入力がないので 1 列に寄せる。 */
-.screen.solo {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.screen.solo .pane-time {
-  grid-template-rows: auto auto auto;
-  align-content: center;
-  row-gap: 18px;
-}
-
-.screen.solo .phase {
-  justify-self: center;
-}
-
-.screen.solo .dial {
-  width: 148px;
-}
-
-.screen.solo .actions {
-  width: 300px;
-}
-
-.update {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 2px;
-}
-
-.update button {
-  height: 26px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 999px;
-  /* 「開始」と並んでも主役を奪わないよう、塗りではなく淡い色面にする。 */
-  background: color-mix(in srgb, var(--tomato) 18%, transparent);
-  color: var(--tomato);
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.update button:hover:enabled {
-  background: color-mix(in srgb, var(--tomato) 24%, transparent);
-}
-
-.update button:disabled {
-  background: var(--control);
-  color: var(--text-dim);
-}
-
-.update small {
-  font-size: 11px;
-  color: var(--text-dim);
-}
-
-.alert {
-  flex: none;
-  max-height: 54px;
-  margin: 0;
-  padding: 0 4px;
-  overflow-y: auto;
-  overflow-wrap: anywhere;
-  font-size: 11px;
-  line-height: 18px;
-  color: var(--tomato);
-  -webkit-user-select: text;
-  user-select: text;
-}
-
-/* 確認ダイアログ。どの画面の上でも同じ色で出すため、役割別の色ではなく元の色を直接使う。 */
-.scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 10;
-  display: grid;
-  place-items: center;
-  background: var(--scrim);
-}
-
-.dialog {
-  width: 300px;
-  padding: 20px;
-  border: 1px solid var(--ink-600);
-  border-radius: 14px;
-  background: var(--ink-700);
-  color: var(--paper);
-  box-shadow: 0 18px 48px var(--shadow);
-}
-
-.dialog p {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.dialog small {
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--paper-dim);
-}
-
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 18px;
-}
-
-.dialog .button {
-  background: var(--ink-600);
-  color: var(--paper);
-}
-
-.dialog .button:hover {
-  filter: brightness(1.12);
-}
-
-.dialog .button.danger {
-  background: var(--tomato);
-  color: var(--tomato-ink);
-}
-
-.dialog .button.primary {
-  flex: none;
-  background: var(--tomato);
-  color: var(--tomato-ink);
-}
-
-.dialog .button:disabled {
-  opacity: 0.5;
-  filter: none;
-}
-
-.time-edit-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  font-size: 13px;
-}
-
-.time-edit-row > span:first-child {
-  width: 40px;
-  color: var(--paper-dim);
-}
-
-.time-edit-row .unit {
-  color: var(--paper-dim);
-}
-
-.time-edit input {
-  height: 32px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--ink-600);
-  color: var(--paper);
-  font: inherit;
-  font-variant-numeric: tabular-nums;
-}
-
-.time-edit input[type="number"] {
-  width: 56px;
-}
-
-.time-edit .alert {
-  margin: 0 0 4px;
-  color: var(--tomato);
-}
-
-.dialog :focus-visible {
-  outline-color: var(--paper);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dial-lit {
-    transition: none;
-    animation: none;
-  }
-}
-
-/* フェーズ名の行。右端に設定などの小さな操作を置く。 */
-.pane-head {
-  justify-self: stretch;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 2px;
+  margin-right: -6px;
 }
 
 .icon-button {
@@ -733,7 +238,6 @@ select.category-field {
   border-radius: 999px;
   background: transparent;
   color: var(--text-dim);
-  font-size: 13px;
 }
 
 .icon-button:hover:enabled {
@@ -742,40 +246,846 @@ select.category-field {
 }
 
 .icon-button:disabled {
-  opacity: 0.35;
+  opacity: 0.32;
 }
 
-.settings-side {
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  justify-items: stretch;
+/* 長い休憩までの回数。塗りは終えた集中、輪は今の集中。 */
+.cycle {
+  grid-column: 2;
+  display: flex;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.settings-about {
-  align-self: center;
+.cycle i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text) 26%, transparent);
+}
+
+.cycle i[data-state="done"] {
+  background: var(--accent);
+}
+
+.cycle i[data-state="now"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  animation: breathe 2.8s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* 意図: タイトルとカテゴリ。タイトルが 3 行になっても文字盤が動かないよう、高さを先に取る。 */
+.intent {
+  flex: none;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 6px;
+  min-height: 108px;
+  margin-top: 4px;
 }
 
-.settings-version {
+.intent-label {
+  margin: 0 0 -4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.title-field,
+.notes {
+  display: block;
+  width: 100%;
+  border: 0;
+  resize: none;
+  outline: none;
+}
+
+.title-field {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 24px;
+  text-align: center;
+  overflow-wrap: anywhere;
+  /* 内容に合わせて 1〜3 行に伸縮する。 */
+  field-sizing: content;
+  min-height: 28px;
+  max-height: 76px;
+}
+
+/* field-sizing のない WebView では、3 行ぶんを常に取って全文を見せる。 */
+@supports not (field-sizing: content) {
+  .title-field {
+    height: 76px;
+  }
+}
+
+.title-field::placeholder {
+  font-weight: 500;
+}
+
+.title-field:hover {
+  background: color-mix(in srgb, var(--field) 60%, transparent);
+}
+
+.title-field:focus {
+  background: var(--field);
+}
+
+/* カテゴリ。ネイティブの select を丸い枠にし、色の点と山形は外側の要素で描く。 */
+.category-pick {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.category-pick::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: var(--hue, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--hue, var(--text-faint));
+  pointer-events: none;
+}
+
+.category-pick::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  margin-top: -4.5px;
+  border: solid var(--text-dim);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+select.category-field {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 26px;
+  max-width: 100%;
+  padding: 0 27px 0 25px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 24px;
+  outline: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+select.category-field:hover {
+  background: color-mix(in srgb, var(--control) 60%, transparent);
+}
+
+select.category-field:focus-visible {
+  border-color: var(--accent);
+}
+
+/* 文字盤の段。余った高さはここで受ける。 */
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 0 8px;
+}
+
+/* 高さが足りないときは文字盤だけが縮む。ほかの段は縮めない。 */
+.dial {
+  position: relative;
+  flex: 0 1 148px;
+  min-height: 96px;
+  aspect-ratio: 1;
+}
+
+.dial > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.dial-ticks,
+.dial-ticks-major,
+.dial-wedge,
+.dial-ring,
+.dial-ring-track {
+  fill: none;
+}
+
+.dial-ticks {
+  stroke: color-mix(in srgb, var(--text) 30%, transparent);
+  stroke-width: 5;
+  stroke-dasharray: 1.4 8.339;
+  stroke-dashoffset: 0.7;
+}
+
+.dial-ticks-major {
+  stroke: color-mix(in srgb, var(--text) 72%, transparent);
+  stroke-width: 9;
+  stroke-dasharray: 2 45.647;
+  stroke-dashoffset: 1;
+}
+
+.dial-face {
+  fill: color-mix(in srgb, var(--accent) 17%, transparent);
+}
+
+.dial-wedge {
+  stroke: var(--accent);
+  stroke-width: 72;
+  transition: stroke-dasharray 1s linear;
+}
+
+.dial-hand {
+  stroke: color-mix(in srgb, var(--accent) 72%, var(--hand-light));
+  stroke-width: 4.5;
+  stroke-linecap: round;
+  transform-origin: 100px 100px;
+  transition: transform 1s linear;
+}
+
+.dial-hub {
+  fill: var(--paper);
+  stroke: var(--hub-edge);
+  stroke-width: 1.5;
+}
+
+/* 待機中の文字盤は、これから始める長さの下書きとして薄く出す。 */
+[data-tone="idle"] .dial-wedge {
+  opacity: 0.4;
+}
+
+[data-tone="idle"] .dial-hand {
+  opacity: 0.75;
+}
+
+/* 休憩の文字盤は、扇と針ではなく輪とカップにして、色に頼らず集中と見分ける。 */
+.dial-ring-track {
+  stroke: color-mix(in srgb, var(--accent) 17%, transparent);
+  stroke-width: 14;
+}
+
+.dial-ring {
+  stroke: var(--accent);
+  stroke-width: 14;
+  transition: stroke-dasharray 1s linear;
+}
+
+.dial-cup {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.clock {
+  font-family:
+    ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 32px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+[data-tone="idle"] .clock {
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+.clock-caption {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+/* 開始と予定の終了、その両脇に ±5 分。待機中も高さを取る。 */
+.adjust {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 26px;
+}
+
+.adjust button {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--control);
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.adjust button:hover {
+  background: var(--control-hover);
+  color: var(--text);
+}
+
+/* 押すと編集できることが分かるよう、±5 分と違って枠線で囲む。 */
+.adjust .time-range {
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+}
+
+.adjust .time-range:hover {
+  background: var(--control);
+}
+
+/* 待機中は「今始めたら」の時刻を、押せない文字として出す。 */
+.time-preview {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+}
+
+.notes {
+  flex: none;
+  height: 44px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.notes:focus {
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.button {
+  height: 38px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--control);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.button:hover:enabled {
+  background: var(--control-hover);
+}
+
+.button:disabled {
+  opacity: 0.5;
+}
+
+.button.primary {
+  flex: 1;
+  background: var(--primary, var(--accent));
+  color: var(--on-primary, var(--on-accent));
+  font-size: 14px;
+}
+
+.button.primary:hover:enabled {
+  background: var(--primary, var(--accent));
+  filter: brightness(1.08);
+}
+
+.button.danger:hover:enabled {
+  background: var(--tomato);
+  filter: brightness(1.08);
+}
+
+.button.wide {
+  flex: 1;
+}
+
+.button.ghost {
+  padding: 0 10px;
+  background: transparent;
+  color: var(--text-dim);
+}
+
+.button.ghost:hover:enabled {
+  background: var(--control);
+  color: var(--text);
+}
+
+.button.danger {
+  background: var(--tomato);
+  color: var(--ink);
+}
+
+/* 更新の知らせ。操作の下に小さく置き、主役の操作と競わせない。 */
+.update {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 22px;
+  margin-top: 4px;
+}
+
+.update button {
+  height: 22px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--control);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.update button::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--sky);
+  vertical-align: 1px;
+}
+
+.update button:hover:enabled {
+  background: var(--control-hover);
+}
+
+.update button:disabled {
+  background: transparent;
+  color: var(--text-faint);
+  padding: 0;
+}
+
+.update button:disabled::before {
+  background: var(--text-faint);
+}
+
+.update small {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.alert {
+  flex: none;
+  max-height: 54px;
+  margin: 0;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--tomato);
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* 画面に出す失敗の知らせは、面を敷いて読みやすくする。 */
+.alert.box {
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--tomato) 13%, transparent);
+}
+
+/* 更新の失敗は「更新あり」の下に出す。高さは文字盤が譲る。 */
+.alert.update-error {
+  max-height: 36px;
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* 区切り画面（集中終了、休憩終了）。文字盤を出さず、見出しと超過時間を大きく出す。 */
+.due-head {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 6px;
+}
+
+.due-title {
   margin: 0;
   font-size: 22px;
+  font-weight: 700;
+  line-height: 30px;
+  letter-spacing: 0.04em;
+}
+
+.due-head .clock {
+  margin-top: 2px;
+  font-size: 44px;
+  line-height: 50px;
+}
+
+.due-head .clock-caption {
+  margin-top: 0;
+  color: var(--text-dim);
+}
+
+.due-head .adjust {
+  margin-top: 10px;
+}
+
+.session {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 14px;
+}
+
+.session-title {
+  margin: 0;
+  font-size: 14px;
   font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.session-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-dim);
+}
+
+.session-category::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hue, var(--text-dim));
+}
+
+.field-label {
+  flex: none;
+  margin: 14px 2px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.notes.tall {
+  flex: 1;
+  min-height: 64px;
+  height: auto;
+  padding: 8px 10px;
+  line-height: 20px;
+}
+
+.spacer {
+  flex: 1;
+  min-height: 0;
+}
+
+/* 休憩の提示だけが残った集中終了。入力がないので中央に寄せる。 */
+.screen.solo .due-head {
+  flex: 1;
+  justify-content: center;
+  gap: 14px;
+  padding-bottom: 24px;
+}
+
+.dial-check {
+  width: 96px;
+  height: 96px;
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.due-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* 重ねて出すもの。どの画面の上でも同じ色で出すため、元の色を直接使う。 */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: var(--scrim);
+}
+
+.dialog {
+  width: 300px;
+  padding: 18px;
+  border: 1px solid var(--ink-600);
+  border-radius: 16px;
+  background: var(--ink-700);
+  color: var(--paper);
+  box-shadow: 0 18px 48px var(--shadow);
+}
+
+.dialog p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.dialog small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--paper-dim);
+  overflow-wrap: anywhere;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.dialog .button {
+  height: 34px;
+  padding: 0 16px;
+  background: var(--ink-600);
+  color: var(--paper);
+  font-size: 13px;
+}
+
+.dialog .button:hover:enabled {
+  background: var(--ink-600);
+  filter: brightness(1.14);
+}
+
+/* 取り消せない操作（破棄、削除）とアプリの終了だけを赤にする。 */
+.dialog .button.danger {
+  background: var(--tomato);
+  color: var(--ink);
+}
+
+.dialog .button.primary {
+  flex: none;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.dialog :focus-visible {
+  outline-color: var(--paper);
+}
+
+/* ダイアログの入力欄は面が明るいので、入力例の文字を一段明るくする。 */
+.dialog ::placeholder {
+  color: var(--paper-dim);
+}
+
+.dialog-title {
+  margin-bottom: 12px;
+}
+
+.time-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.time-edit-row > span:first-child {
+  width: 36px;
+  color: var(--paper-dim);
+}
+
+.time-edit-row .unit {
+  color: var(--paper-dim);
+}
+
+.time-edit-row .unit {
+  white-space: nowrap;
+}
+
+.time-edit-row output {
   font-variant-numeric: tabular-nums;
 }
 
-.settings-about small {
+.time-edit input,
+.record-field {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--ink-600);
+  color: var(--paper);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.time-edit input:focus,
+.record-field:focus {
+  border-color: var(--paper-faint);
+}
+
+.time-edit input[type="number"] {
+  width: 52px;
+}
+
+.dialog .alert {
+  display: block;
+  margin-top: 8px;
+  color: var(--tomato);
+}
+
+.dialog.record-edit {
+  width: 328px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+
+.record-edit-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 2px 2px;
   font-size: 12px;
+  color: var(--paper-dim);
+}
+
+.record-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.record-edit-dash {
+  color: var(--paper-dim);
+}
+
+.record-edit-length {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--paper-dim);
+}
+
+.record-edit-length b {
+  margin-right: 6px;
+  color: var(--amber);
+}
+
+.record-edit .category-pick {
+  align-self: flex-start;
+  --line: var(--ink-600);
+}
+
+.record-edit select.category-field {
+  background: var(--ink-600);
+  border-color: transparent;
+}
+
+.record-notes {
+  height: 84px;
+  padding: 7px 10px;
+  line-height: 20px;
+  resize: none;
+}
+
+.record-edit-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.dialog.record-edit .alert {
+  margin: 0;
+  max-height: 36px;
+}
+
+/* 設定画面。カテゴリを主役にし、版と更新は下の段にまとめる。 */
+.section-label {
+  flex: none;
+  margin: 10px 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  letter-spacing: 0.08em;
   color: var(--text-dim);
+}
+
+.settings .alert.box {
+  margin-bottom: 8px;
 }
 
 /* カテゴリの数に上限がないので、一覧だけを送る。 */
 .category-list {
   flex: 1;
   min-height: 0;
-  margin: 0;
-  padding: 0;
+  margin: -4px;
+  padding: 4px;
   list-style: none;
   overflow-y: auto;
 }
@@ -784,11 +1094,15 @@ select.category-field {
 .category-add {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .category-item {
   flex-wrap: wrap;
+}
+
+.category-item + .category-item {
+  margin-top: 4px;
 }
 
 /* カテゴリの色の丸。押すと、その下に選べる色が並ぶ。 */
@@ -796,45 +1110,53 @@ select.category-field {
   flex: none;
   width: 18px;
   height: 18px;
-  margin: 0 4px;
+  margin: 0 8px 0 2px;
   padding: 0;
-  border: 2px solid transparent;
-  border-radius: 999px;
+  border: 0;
+  border-radius: 50%;
   background: var(--hue, var(--text-dim));
 }
 
+.category-swatch[aria-expanded="true"],
 .category-swatch[aria-pressed="true"] {
-  border-color: var(--text);
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 3.5px var(--text);
 }
 
 .color-picker {
   flex-basis: 100%;
   min-width: 0;
-  margin: 0;
-  border: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 0 2px 28px;
+  gap: 4px;
+  margin: 4px 0 2px 28px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--field);
+}
+
+.color-picker .category-swatch {
+  margin: 0 6px 0 2px;
+  --bg: var(--ink-800);
 }
 
 .color-auto {
   height: 22px;
+  margin-left: auto;
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: transparent;
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .color-auto[aria-pressed="true"] {
   border-color: var(--text);
   color: var(--text);
-}
-
-.category-item + .category-item {
-  margin-top: 4px;
 }
 
 .category-name {
@@ -844,71 +1166,158 @@ select.category-field {
   padding: 0 10px;
   border: 1px solid transparent;
   border-radius: 8px;
-  background: var(--control);
+  background: var(--field);
   color: var(--text);
   font-size: 13px;
   outline: none;
 }
 
 .category-name:focus {
-  border-color: var(--accent);
+  border-color: var(--text-faint);
 }
 
 .category-add {
   flex: none;
   gap: 8px;
+  margin-top: 8px;
 }
 
-.pane-tools {
+.category-add .button {
+  height: 30px;
+  padding: 0 14px;
+  font-size: 12px;
+}
+
+.settings-about {
+  flex: none;
   display: flex;
-  gap: 2px;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
 }
 
-/* 履歴画面。1 列にして、日付の行と合計の行は固定し、記録の一覧だけを送る。 */
+.settings-about-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 30px;
+}
+
+.settings-version {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-about .button {
+  height: 30px;
+  padding: 0 14px;
+  font-size: 12px;
+}
+
+.settings-about small {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.settings-about .update {
+  justify-content: flex-start;
+  margin-top: 0;
+}
+
+.text-button {
+  align-self: flex-start;
+  height: 24px;
+  margin-left: -2px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+}
+
+.text-button:hover {
+  color: var(--text);
+}
+
+/* 履歴画面。日付と合計は固定し、記録の一覧だけを送る。 */
 .history {
+  position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 8px 0 20px;
+  padding: 10px 16px 0;
   background: var(--bg);
   color: var(--text);
 }
 
-.history-head {
+.history-add {
+  height: 24px;
+  margin-right: 6px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--control);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.history-add:hover:enabled {
+  background: var(--control-hover);
+}
+
+.history-add:disabled {
+  opacity: 0.5;
+}
+
+.history-tools {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  margin-right: -6px;
+}
+
+.history-nav {
   flex: none;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding-right: 12px;
+  height: 28px;
+  margin-top: 4px;
 }
 
-.history-nav,
-.history-tools {
+.history-nav-day {
+  grid-column: 2;
   display: flex;
   align-items: center;
-  gap: 4px;
-}
-
-.history-tools {
-  justify-self: end;
-  gap: 8px;
+  gap: 2px;
 }
 
 .history-date {
-  min-width: 116px;
+  min-width: 112px;
   text-align: center;
   font-size: 14px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-/* 「今日」と「今日へ」は同じ幅にして、日付を送っても矢印の位置を動かさない。 */
+/* 「今日」と「今日へ」は同じ場所に置く。 */
 .history-today {
-  width: 52px;
+  grid-column: 3;
+  justify-self: end;
   height: 22px;
-  margin-left: 4px;
-  padding: 0;
+  padding: 0 10px;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -916,49 +1325,23 @@ select.category-field {
   font-size: 11px;
   font-weight: 600;
   line-height: 22px;
-  text-align: center;
 }
 
 button.history-today {
   background: var(--control);
-  color: var(--text-dim);
+  color: var(--text);
 }
 
 button.history-today:hover {
   background: var(--control-hover);
-  color: var(--text);
-}
-
-.history-add {
-  height: 28px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--tomato) 18%, transparent);
-  color: var(--tomato);
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.history-add:hover:enabled {
-  background: color-mix(in srgb, var(--tomato) 26%, transparent);
-}
-
-.history-add:disabled {
-  opacity: 0.5;
 }
 
 .history-summary {
   flex: none;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding-right: 12px;
+  margin-top: 8px;
 }
 
 .history-total {
-  flex: none;
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -971,7 +1354,7 @@ button.history-today:hover {
     ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 20px;
   font-weight: 500;
-  line-height: 24px;
+  line-height: 26px;
 }
 
 .history-total span {
@@ -981,8 +1364,9 @@ button.history-today:hover {
 
 .history-ribbon {
   position: relative;
-  flex: 1;
+  flex: none;
   height: 8px;
+  margin-top: 6px;
   overflow: hidden;
   border-radius: 999px;
   /* 6 時間ごとに細い目盛りを入れる。 */
@@ -996,37 +1380,24 @@ button.history-today:hover {
   position: absolute;
   top: 0;
   bottom: 0;
-  min-width: 2px;
+  min-width: 3px;
   border-radius: 2px;
   background: var(--hue, var(--text-dim));
 }
 
-[data-hue="0"] {
-  --hue: var(--sky);
-}
-
-[data-hue="1"] {
-  --hue: var(--amber);
-}
-
-[data-hue="2"] {
-  --hue: var(--violet);
-}
-
-[data-hue="3"] {
-  --hue: var(--rose);
-}
-
-[data-hue="4"] {
-  --hue: var(--leaf);
-}
-
-[data-hue="5"] {
-  --hue: var(--tomato);
+.history-hours {
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  margin: 2px 0 6px;
+  font-size: 10px;
+  line-height: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
 }
 
 .history > .alert {
-  padding-right: 12px;
+  margin-bottom: 6px;
 }
 
 .history-empty {
@@ -1034,43 +1405,38 @@ button.history-today:hover {
   display: grid;
   place-items: center;
   margin: 0;
-  padding-right: 12px;
+  padding-bottom: 40px;
   color: var(--text-faint);
 }
 
 .history-list {
   flex: 1;
   min-height: 0;
-  margin: 0;
-  padding: 0 4px 12px 0;
+  margin: 0 -10px 0 0;
+  padding: 0 10px 12px 0;
   list-style: none;
   overflow-y: auto;
-  scrollbar-gutter: stable;
 }
 
 .history-item {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: start;
-  gap: 4px 10px;
-  padding: 10px 6px 10px 18px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--card);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  padding: 10px 0 9px 14px;
 }
 
-.history-item + .history-item {
-  margin-top: 6px;
+.history-item {
+  border-top: 1px solid var(--line);
 }
 
 /* 左の帯はカテゴリの色。カテゴリがなければ無彩色にする。 */
 .history-item::before {
   content: "";
   position: absolute;
-  left: 7px;
-  top: 10px;
-  bottom: 10px;
+  left: 1px;
+  top: 12px;
+  bottom: 11px;
   width: 3px;
   border-radius: 999px;
   background: var(--hue, var(--text-faint));
@@ -1092,6 +1458,7 @@ button.history-today:hover {
 }
 
 .history-item-title {
+  grid-column: 1;
   font-size: 14px;
   font-weight: 600;
   line-height: 20px;
@@ -1100,6 +1467,25 @@ button.history-today:hover {
 .history-item-title[data-empty] {
   font-weight: 400;
   color: var(--text-faint);
+}
+
+.history-item-length {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-item-sub {
+  grid-column: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  min-height: 22px;
 }
 
 .history-item-time {
@@ -1114,142 +1500,102 @@ button.history-today:hover {
   color: var(--text-faint);
 }
 
-.history-item p.history-item-notes {
-  margin-top: 4px;
-  font-size: 12px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
-.history-item-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  max-width: 220px;
-  height: 20px;
-}
-
 .history-item-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   min-width: 0;
-  height: 20px;
-  padding: 0 9px;
+  max-width: 140px;
+  height: 18px;
+  padding: 0 8px 0 7px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--hue) 16%, transparent);
-  color: var(--hue);
+  color: var(--text-dim);
   font-size: 11px;
   font-weight: 600;
-  line-height: 20px;
+  line-height: 16px;
 }
 
-.history-item-length {
+.history-item-category::before {
+  content: "";
   flex: none;
-  min-width: 40px;
-  text-align: right;
-  font-size: 13px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hue, var(--text-dim));
 }
 
 /* 編集と削除は、WebDriver からも押せるよう常に表示し、色だけ控えめにする。 */
 .history-item-tools {
+  grid-column: 2;
+  grid-row: 2;
   display: flex;
-  margin: -4px 0;
+  margin: -3px -6px -3px 0;
 }
 
 .history-item-tools .icon-button {
   color: var(--text-faint);
 }
 
-/* 記録の追加と編集。確認ダイアログより入力が多いので幅を広げる。 */
-.dialog.record-edit {
-  --control: var(--ink-600);
-  width: 440px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-}
-
-.record-edit-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 0 2px 2px;
+.history-item p.history-item-notes {
+  grid-column: 1 / -1;
+  margin-top: 2px;
   font-size: 12px;
-  color: var(--paper-dim);
-}
-
-.record-edit-head p {
-  color: var(--paper);
-}
-
-.record-field {
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: var(--ink-600);
-  color: var(--paper);
-  font-variant-numeric: tabular-nums;
-  outline: none;
-}
-
-.record-field:focus {
-  border-color: var(--paper-faint);
-}
-
-.record-edit-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.record-edit-dash {
-  color: var(--paper-dim);
-}
-
-.record-edit-length {
-  flex: 1;
-  min-width: 0;
-  padding-left: 4px;
-  white-space: nowrap;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  color: var(--paper-dim);
-}
-
-.record-edit-length b {
-  margin-right: 6px;
-  color: var(--amber);
-}
-
-.record-edit .category-field {
-  min-width: 0;
-  max-width: 150px;
-}
-
-.record-notes {
-  height: 96px;
-  padding: 8px 10px;
   line-height: 1.6;
-  resize: none;
+  color: var(--text-dim);
+  white-space: pre-wrap;
 }
 
-.record-edit-foot {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 4px;
+/* 動き。押せるものの色の変化、区切り画面の現れ方、重ねて出すものの現れ方。 */
+.button,
+.icon-button,
+.adjust button,
+.update button,
+.history-add,
+.history-today,
+.text-button,
+.title-field,
+select.category-field {
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
 }
 
-.dialog.record-edit .alert {
-  flex: 1;
-  min-width: 0;
-  max-height: 36px;
-  margin: 0;
-  color: var(--tomato);
+/* 区切りは、地の色から面の色がにじむように現れる。 */
+[data-tone$="-due"] {
+  animation: arrive 320ms ease-out;
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+  }
+}
+
+.scrim {
+  animation: arrive 120ms ease-out;
+}
+
+.dialog {
+  animation: pop 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
 }
