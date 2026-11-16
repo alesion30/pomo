@@ -93,21 +93,148 @@ export function Settings({
   };
   const error = saveError ?? config?.error ?? null;
   return (
-    <main className="screen" data-testid="settings" data-tone="idle">
-      <div className="pane-time settings-side">
-        <div className="pane-head">
-          <h1 className="phase">設定</h1>
+    <main className="screen settings" data-testid="settings" data-tone="idle">
+      <header className="settings-head">
+        <h1 className="screen-title">設定</h1>
+        <button
+          type="button"
+          className="icon-button"
+          data-testid="settings-close"
+          aria-label="設定を閉じる"
+          onClick={onClose}
+        >
+          <Icon>
+            <path d="M18 6 6 18M6 6l12 12" />
+          </Icon>
+        </button>
+      </header>
+      <section
+        className="settings-categories"
+        aria-labelledby="categories-title"
+      >
+        <h2 className="settings-label" id="categories-title">
+          カテゴリ
+        </h2>
+        {error && (
+          <p role="alert" className="alert box" data-testid="config-error">
+            {error}
+          </p>
+        )}
+        <ul className="category-list" data-testid="category-list">
+          {categories.map((category, index) => (
+            <li key={category} className="category-item">
+              <button
+                type="button"
+                className="category-swatch"
+                data-testid="category-color"
+                data-hue={hueOf(category, categories, colors)}
+                aria-label={`${category} の色`}
+                aria-expanded={picking === category}
+                onClick={() =>
+                  setPicking(picking === category ? null : category)
+                }
+              />
+              <input
+                className="category-name"
+                data-testid="category-name"
+                aria-label="カテゴリ名"
+                defaultValue={category}
+                onBlur={(e) => rename(index, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                }}
+              />
+              <button
+                type="button"
+                className="icon-button"
+                aria-label={`${category} を上へ`}
+                disabled={index === 0}
+                onClick={() => move(index, -1)}
+              >
+                <Icon>
+                  <path d="m6 14 6-6 6 6" />
+                </Icon>
+              </button>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label={`${category} を下へ`}
+                disabled={index === categories.length - 1}
+                onClick={() => move(index, 1)}
+              >
+                <Icon>
+                  <path d="m6 10 6 6 6-6" />
+                </Icon>
+              </button>
+              <button
+                type="button"
+                className="icon-button"
+                data-testid="category-delete"
+                aria-label={`${category} を削除`}
+                onClick={() => save(categories.filter((_, i) => i !== index))}
+              >
+                <Icon>
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </Icon>
+              </button>
+              {picking === category && (
+                <fieldset
+                  className="color-picker"
+                  aria-label={`${category} の色`}
+                >
+                  {PALETTE.map((color, hue) => (
+                    <button
+                      key={color.name}
+                      type="button"
+                      className="category-swatch"
+                      data-testid="category-color-option"
+                      data-hue={hue}
+                      aria-label={color.label}
+                      aria-pressed={colors[category] === color.name}
+                      onClick={() => choose(category, color.name)}
+                    />
+                  ))}
+                  <button
+                    type="button"
+                    className="color-auto"
+                    data-testid="category-color-auto"
+                    aria-pressed={colors[category] === undefined}
+                    onClick={() => choose(category, null)}
+                  >
+                    自動
+                  </button>
+                </fieldset>
+              )}
+            </li>
+          ))}
+        </ul>
+        <form
+          className="category-add"
+          onSubmit={(e) => {
+            e.preventDefault();
+            add();
+          }}
+        >
+          <input
+            className="category-name"
+            data-testid="category-new"
+            aria-label="新しいカテゴリ"
+            placeholder="新しいカテゴリ"
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+          />
           <button
-            type="button"
-            className="icon-button"
-            data-testid="settings-close"
-            aria-label="設定を閉じる"
-            onClick={onClose}
+            type="submit"
+            className="button"
+            data-testid="category-add"
+            disabled={!newCategory.trim()}
           >
-            ✕
+            追加
           </button>
-        </div>
-        <div className="settings-about">
+        </form>
+      </section>
+      <footer className="settings-about">
+        <div className="settings-about-row">
           <p className="settings-version" data-testid="app-version">
             pomo {version && `v${version}`}
           </p>
@@ -120,148 +247,50 @@ export function Settings({
           >
             {check.state === "checking" ? "確認中…" : "アップデートを確認"}
           </button>
-          {check.state === "latest" && (
-            <small data-testid="update-latest">最新の版です</small>
-          )}
-          {check.state === "found" && (
-            <UpdateButton
-              version={check.version}
-              phase={phase}
-              applying={applying}
-              onApply={apply}
-            />
-          )}
-          {check.state === "failed" && (
-            <p role="alert" className="alert">
-              {check.message}
-            </p>
-          )}
         </div>
+        {check.state === "latest" && (
+          <small data-testid="update-latest">最新の版です</small>
+        )}
+        {check.state === "found" && (
+          <UpdateButton
+            version={check.version}
+            phase={phase}
+            applying={applying}
+            onApply={apply}
+          />
+        )}
+        {check.state === "failed" && (
+          <p role="alert" className="alert">
+            {check.message}
+          </p>
+        )}
         <button
           type="button"
-          className="button ghost"
+          className="text-button"
           data-testid="reveal-config"
           onClick={() => void invoke("reveal_config").catch(console.error)}
         >
           設定ファイルを Finder で表示
         </button>
-      </div>
-      <div className="pane-note">
-        <div className="card">
-          <p className="card-label">カテゴリ</p>
-          {error && (
-            <p role="alert" className="alert" data-testid="config-error">
-              {error}
-            </p>
-          )}
-          <ul className="category-list" data-testid="category-list">
-            {categories.map((category, index) => (
-              <li key={category} className="category-item">
-                <button
-                  type="button"
-                  className="category-swatch"
-                  data-testid="category-color"
-                  data-hue={hueOf(category, categories, colors)}
-                  aria-label={`${category} の色`}
-                  aria-expanded={picking === category}
-                  onClick={() =>
-                    setPicking(picking === category ? null : category)
-                  }
-                />
-                <input
-                  className="category-name"
-                  data-testid="category-name"
-                  aria-label="カテゴリ名"
-                  defaultValue={category}
-                  onBlur={(e) => rename(index, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") e.currentTarget.blur();
-                  }}
-                />
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label={`${category} を上へ`}
-                  disabled={index === 0}
-                  onClick={() => move(index, -1)}
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label={`${category} を下へ`}
-                  disabled={index === categories.length - 1}
-                  onClick={() => move(index, 1)}
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  className="icon-button"
-                  data-testid="category-delete"
-                  aria-label={`${category} を削除`}
-                  onClick={() => save(categories.filter((_, i) => i !== index))}
-                >
-                  ✕
-                </button>
-                {picking === category && (
-                  <fieldset
-                    className="color-picker"
-                    aria-label={`${category} の色`}
-                  >
-                    {PALETTE.map((color, hue) => (
-                      <button
-                        key={color.name}
-                        type="button"
-                        className="category-swatch"
-                        data-testid="category-color-option"
-                        data-hue={hue}
-                        aria-label={color.label}
-                        aria-pressed={colors[category] === color.name}
-                        onClick={() => choose(category, color.name)}
-                      />
-                    ))}
-                    <button
-                      type="button"
-                      className="color-auto"
-                      data-testid="category-color-auto"
-                      aria-pressed={colors[category] === undefined}
-                      onClick={() => choose(category, null)}
-                    >
-                      自動
-                    </button>
-                  </fieldset>
-                )}
-              </li>
-            ))}
-          </ul>
-          <form
-            className="category-add"
-            onSubmit={(e) => {
-              e.preventDefault();
-              add();
-            }}
-          >
-            <input
-              className="category-name"
-              data-testid="category-new"
-              aria-label="新しいカテゴリ"
-              placeholder="新しいカテゴリ"
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-            />
-            <button
-              type="submit"
-              className="button"
-              data-testid="category-add"
-              disabled={!newCategory.trim()}
-            >
-              追加
-            </button>
-          </form>
-        </div>
-      </div>
+      </footer>
     </main>
+  );
+}
+
+function Icon({ children }: { children: React.ReactNode }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
   );
 }

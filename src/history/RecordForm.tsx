@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { formatClock } from "../popover/clockTime";
 import { CategorySelect } from "../ui/CategorySelect";
+import { type Colors, hueOf } from "../ui/categoryColor";
 import { formatMinutes, resolveTimes } from "./dayClock";
 import { type RecordInput, startOfDay, validate } from "./records";
 
@@ -11,6 +12,7 @@ export function RecordForm({
   initial,
   now,
   categories,
+  colors,
   onSave,
   onCancel,
 }: {
@@ -19,6 +21,7 @@ export function RecordForm({
   initial: RecordInput;
   now: number;
   categories: string[];
+  colors: Colors;
   onSave(input: RecordInput): Promise<void>;
   onCancel(): void;
 }) {
@@ -97,9 +100,12 @@ export function RecordForm({
             {!invalid &&
               formatMinutes((input.endedAt - input.startedAt) / 1000)}
           </span>
+        </div>
+        <div className="record-category-row">
           <CategorySelect
             testId="record-category"
             categories={categories}
+            hue={hueOf(category || null, categories, colors)}
             value={category}
             onChange={setCategory}
           />

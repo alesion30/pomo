@@ -219,6 +219,13 @@ textarea {
   margin-right: -6px;
 }
 
+.screen-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
 .icon-button {
   flex: none;
   display: grid;
@@ -239,6 +246,21 @@ textarea {
 
 .icon-button:disabled {
   opacity: 0.32;
+}
+
+.button,
+.icon-button,
+.adjust button,
+.update button,
+.history-add,
+.history-today,
+.text-button,
+.title-field,
+select.category-field {
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
 }
 
 /* 長い休憩までの回数。塗りは終えた集中、輪は今の集中。 */
@@ -823,17 +845,42 @@ select.category-field:focus-visible {
   line-height: 20px;
 }
 
-.spacer {
+/* 休憩の提示だけが残った集中終了。入力がないので中央に寄せる。 */
+.screen.solo .solo-content {
   flex: 1;
   min-height: 0;
-}
-
-/* 休憩の提示だけが残った集中終了。入力がないので中央に寄せる。 */
-.screen.solo .due-head {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   gap: 14px;
   padding-bottom: 24px;
+}
+
+.screen.solo .actions {
+  width: 100%;
+}
+
+.break-due-head {
+  min-height: 102px;
+}
+
+.break-due-intent {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.break-due-intent .title-field {
+  min-height: 28px;
+}
+
+.break-due-actions {
+  flex: none;
 }
 
 .dial-check {
@@ -844,12 +891,6 @@ select.category-field:focus-visible {
   stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.due-hint {
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-dim);
 }
 
 /* 重ねて出すもの。どの画面の上でも同じ色で出すため、元の色を直接使う。 */
@@ -918,6 +959,10 @@ select.category-field:focus-visible {
   flex: none;
   background: var(--paper);
   color: var(--ink);
+}
+
+.screen.solo .actions .button.primary {
+  flex: 1;
 }
 
 .dialog :focus-visible {
@@ -1008,6 +1053,10 @@ select.category-field:focus-visible {
   gap: 6px;
 }
 
+.record-edit-row input[type="time"] {
+  width: 112px;
+}
+
 .record-edit-dash {
   color: var(--paper-dim);
 }
@@ -1033,6 +1082,10 @@ select.category-field:focus-visible {
   --line: var(--ink-600);
 }
 
+.record-category-row {
+  min-height: 26px;
+}
+
 .record-edit select.category-field {
   background: var(--ink-600);
   border-color: transparent;
@@ -1052,13 +1105,17 @@ select.category-field:focus-visible {
   margin-top: 4px;
 }
 
+.history > .alert {
+  margin-bottom: 6px;
+}
+
 .dialog.record-edit .alert {
   margin: 0;
   max-height: 36px;
 }
 
 /* 設定画面。カテゴリを主役にし、版と更新は下の段にまとめる。 */
-.section-label {
+.settings-label {
   flex: none;
   margin: 10px 0 6px;
   font-size: 11px;
@@ -1066,6 +1123,21 @@ select.category-field:focus-visible {
   line-height: 14px;
   letter-spacing: 0.08em;
   color: var(--text-dim);
+}
+
+.settings-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+}
+
+.settings-categories {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .settings .alert.box {
@@ -1091,6 +1163,11 @@ select.category-field:focus-visible {
 
 .category-item {
   flex-wrap: wrap;
+}
+
+.category-item .icon-button svg {
+  width: 16px;
+  height: 16px;
 }
 
 .category-item + .category-item {
@@ -1264,6 +1341,14 @@ select.category-field:focus-visible {
   white-space: nowrap;
 }
 
+.history-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+}
+
 .history-add:hover:enabled {
   background: var(--control-hover);
 }
@@ -1388,10 +1473,6 @@ button.history-today:hover {
   color: var(--text-faint);
 }
 
-.history > .alert {
-  margin-bottom: 6px;
-}
-
 .history-empty {
   flex: 1;
   display: grid;
@@ -1416,9 +1497,6 @@ button.history-today:hover {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 2px 8px;
   padding: 10px 0 9px 14px;
-}
-
-.history-item {
   border-top: 1px solid var(--line);
 }
 
@@ -1471,12 +1549,12 @@ button.history-today:hover {
   font-variant-numeric: tabular-nums;
 }
 
-.history-item-sub {
+.history-item-details {
   grid-column: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 2px 8px;
+  gap: 2px 6px;
   min-height: 22px;
 }
 
@@ -1521,14 +1599,18 @@ button.history-today:hover {
 }
 
 /* 編集と削除は、WebDriver からも押せるよう常に表示し、色だけ控えめにする。 */
-.history-item-tools {
-  grid-column: 2;
-  grid-row: 2;
+.history-item-details .icon-button {
   display: flex;
-  margin: -3px -6px -3px 0;
+  width: 24px;
+  height: 24px;
+  margin: -2px 0;
 }
 
-.history-item-tools .icon-button {
+.history-item-details .icon-button:first-of-type {
+  margin-left: auto;
+}
+
+.history-item-details .icon-button {
   color: var(--text-faint);
 }
 
@@ -1539,22 +1621,6 @@ button.history-today:hover {
   line-height: 1.6;
   color: var(--text-dim);
   white-space: pre-wrap;
-}
-
-/* 動き。押せるものの色の変化、区切り画面の現れ方、重ねて出すものの現れ方。 */
-.button,
-.icon-button,
-.adjust button,
-.update button,
-.history-add,
-.history-today,
-.text-button,
-.title-field,
-select.category-field {
-  transition:
-    background-color 120ms ease,
-    color 120ms ease,
-    border-color 120ms ease;
 }
 
 /* 区切りは、地の色から面の色がにじむように現れる。 */
@@ -1587,7 +1653,9 @@ select.category-field {
   *,
   *::before,
   *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: 視差軽減設定では個別の動きより優先して止める */
     transition: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: 視差軽減設定では個別の動きより優先して止める */
     animation: none !important;
   }
 }

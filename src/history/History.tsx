@@ -75,6 +75,7 @@ export function History({
           initial={form.initial}
           now={now}
           categories={categories}
+          colors={colors}
           onSave={(input) =>
             put(toRecord(input, form.base ?? undefined)).then(() =>
               setForm(null),
@@ -100,8 +101,37 @@ export function History({
         />
       )}
       <header className="history-head">
-        <h1 className="phase">履歴</h1>
-        <div className="history-nav">
+        <h1 className="screen-title">履歴</h1>
+        <div className="history-tools">
+          <button
+            type="button"
+            className="history-add"
+            data-testid="history-add"
+            disabled={records === null}
+            onClick={() =>
+              setForm({
+                base: null,
+                initial: defaultInput(day, now, dayRecords),
+              })
+            }
+          >
+            ＋ 追加
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            data-testid="history-close"
+            aria-label="履歴を閉じる"
+            onClick={onClose}
+          >
+            <Icon>
+              <path d="M18 6 6 18M6 6l12 12" />
+            </Icon>
+          </button>
+        </div>
+      </header>
+      <div className="history-nav">
+        <div className="history-nav-day">
           <button
             type="button"
             className="icon-button"
@@ -128,45 +158,20 @@ export function History({
               <polyline points="9 18 15 12 9 6" />
             </Icon>
           </button>
-          {isToday ? (
-            <span className="history-today">今日</span>
-          ) : (
-            <button
-              type="button"
-              className="history-today"
-              data-testid="history-today"
-              onClick={() => setPicked(null)}
-            >
-              今日へ
-            </button>
-          )}
         </div>
-        <div className="history-tools">
+        {isToday ? (
+          <span className="history-today">今日</span>
+        ) : (
           <button
             type="button"
-            className="history-add"
-            data-testid="history-add"
-            disabled={records === null}
-            onClick={() =>
-              setForm({
-                base: null,
-                initial: defaultInput(day, now, dayRecords),
-              })
-            }
+            className="history-today"
+            data-testid="history-today"
+            onClick={() => setPicked(null)}
           >
-            ＋ 追加
+            今日へ
           </button>
-          <button
-            type="button"
-            className="icon-button"
-            data-testid="history-close"
-            aria-label="履歴を閉じる"
-            onClick={onClose}
-          >
-            ✕
-          </button>
-        </div>
-      </header>
+        )}
+      </div>
       <div className="history-summary">
         <p className="history-total" data-testid="history-total">
           <b>{formatTotal(totalSec(dayRecords))}</b>
@@ -190,8 +195,15 @@ export function History({
           })}
         </div>
       </div>
+      <div className="history-hours" aria-hidden="true">
+        <span>0</span>
+        <span>6</span>
+        <span>12</span>
+        <span>18</span>
+        <span>24</span>
+      </div>
       {shownError && (
-        <p role="alert" className="alert" data-testid="history-error">
+        <p role="alert" className="alert box" data-testid="history-error">
           {shownError}
         </p>
       )}
@@ -209,14 +221,20 @@ export function History({
               data-hue={hueOf(record.category, categories, colors)}
               data-outcome={record.outcome}
             >
-              <div className="history-item-body">
-                <p
-                  className="history-item-title"
-                  data-testid="history-item-title"
-                  data-empty={record.title ? undefined : ""}
-                >
-                  {record.title || "（タイトルなし）"}
-                </p>
+              <p
+                className="history-item-title"
+                data-testid="history-item-title"
+                data-empty={record.title ? undefined : ""}
+              >
+                {record.title || "（タイトルなし）"}
+              </p>
+              <span
+                className="history-item-length"
+                data-testid="history-item-length"
+              >
+                {formatMinutes(record.actual_sec)}
+              </span>
+              <div className="history-item-details">
                 <p
                   className="history-item-time"
                   data-testid="history-item-time"
@@ -227,32 +245,15 @@ export function History({
                     <span data-testid="history-item-early">途中で終了</span>
                   )}
                 </p>
-                {record.notes && (
-                  <p
-                    className="history-item-notes"
-                    data-testid="history-item-notes"
-                  >
-                    {record.notes}
-                  </p>
-                )}
-              </div>
-              <div className="history-item-meta">
                 {record.category && (
                   <span
                     className="history-item-category"
                     data-testid="history-item-category"
+                    data-hue={hueOf(record.category, categories, colors)}
                   >
                     {record.category}
                   </span>
                 )}
-                <span
-                  className="history-item-length"
-                  data-testid="history-item-length"
-                >
-                  {formatMinutes(record.actual_sec)}
-                </span>
-              </div>
-              <div className="history-item-tools">
                 <button
                   type="button"
                   className="icon-button"
@@ -279,6 +280,14 @@ export function History({
                   </Icon>
                 </button>
               </div>
+              {record.notes && (
+                <p
+                  className="history-item-notes"
+                  data-testid="history-item-notes"
+                >
+                  {record.notes}
+                </p>
+              )}
             </li>
           ))}
         </ul>
@@ -290,8 +299,8 @@ export function History({
 function Icon({ children }: { children: ReactNode }) {
   return (
     <svg
-      width="14"
-      height="14"
+      width="16"
+      height="16"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
