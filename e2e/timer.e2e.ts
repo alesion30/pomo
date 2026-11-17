@@ -15,9 +15,14 @@ describe("timer", () => {
     await browser.$('[data-testid="start"]').click();
     await browser.waitUntil(
       async () =>
-        (await browser.$('[data-testid="phase"]').getText()) === "集中",
+        (await browser
+          .$('[data-testid="popover"]')
+          .getAttribute("data-tone")) === "focus",
     );
-    assert.equal(await browser.$('[data-testid="phase"]').getText(), "集中");
+    assert.equal(
+      await browser.$('[data-testid="popover"]').getAttribute("data-tone"),
+      "focus",
+    );
     // メニューバーは「タイトル - 残り時間」の順に出す。
     await browser.waitUntil(() =>
       /^E2E task - \d\d:\d\d$/.test(
@@ -26,12 +31,17 @@ describe("timer", () => {
     );
     await browser.$('[data-testid="end"]').click();
     await browser.$('[data-testid="end-cancel"]').click();
-    assert.equal(await browser.$('[data-testid="phase"]').getText(), "集中");
+    assert.equal(
+      await browser.$('[data-testid="popover"]').getAttribute("data-tone"),
+      "focus",
+    );
     await browser.$('[data-testid="end"]').click();
     await browser.$('[data-testid="end-confirm-ok"]').click();
     await browser.waitUntil(
       async () =>
-        (await browser.$('[data-testid="phase"]').getText()) === "待機中",
+        (await browser
+          .$('[data-testid="popover"]')
+          .getAttribute("data-tone")) === "idle",
     );
   });
   it("starts a break immediately from focus", async () => {
@@ -39,13 +49,17 @@ describe("timer", () => {
     await browser.$('[data-testid="start"]').click();
     await browser.waitUntil(
       async () =>
-        (await browser.$('[data-testid="phase"]').getText()) === "集中",
+        (await browser
+          .$('[data-testid="popover"]')
+          .getAttribute("data-tone")) === "focus",
     );
     await browser.$('[data-testid="break-now"]').click();
     await browser.$('[data-testid="break-confirm-ok"]').click();
     await browser.waitUntil(
       async () =>
-        (await browser.$('[data-testid="phase"]').getText()) === "短い休憩",
+        (await browser
+          .$('[data-testid="popover"]')
+          .getAttribute("data-tone")) === "break",
     );
     // 休憩中は次の集中のタイトルを入れ、振り返りの欄は出さない。
     assert.equal(
@@ -56,7 +70,9 @@ describe("timer", () => {
     await browser.$('[data-testid="start-focus"]').click();
     await browser.waitUntil(
       async () =>
-        (await browser.$('[data-testid="phase"]').getText()) === "集中",
+        (await browser
+          .$('[data-testid="popover"]')
+          .getAttribute("data-tone")) === "focus",
     );
     assert.equal(
       await browser.$('[data-testid="title-input"]').getValue(),
@@ -68,7 +84,9 @@ describe("timer", () => {
     await browser.$('[data-testid="discard-break-confirm-ok"]').click();
     await browser.waitUntil(
       async () =>
-        (await browser.$('[data-testid="phase"]').getText()) === "待機中",
+        (await browser
+          .$('[data-testid="popover"]')
+          .getAttribute("data-tone")) === "idle",
     );
   });
   it("discards focus after confirmation", async () => {
@@ -78,13 +96,17 @@ describe("timer", () => {
     await browser.$('[data-testid="start"]').click();
     await browser.waitUntil(
       async () =>
-        (await browser.$('[data-testid="phase"]').getText()) === "集中",
+        (await browser
+          .$('[data-testid="popover"]')
+          .getAttribute("data-tone")) === "focus",
     );
     await browser.$('[data-testid="discard"]').click();
     await browser.$('[data-testid="discard-confirm-ok"]').click();
     await browser.waitUntil(
       async () =>
-        (await browser.$('[data-testid="phase"]').getText()) === "待機中",
+        (await browser
+          .$('[data-testid="popover"]')
+          .getAttribute("data-tone")) === "idle",
     );
     assert.equal(
       await browser.$('[data-testid="title-input"]').getValue(),

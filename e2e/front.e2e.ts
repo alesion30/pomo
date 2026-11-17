@@ -16,6 +16,9 @@ describe("phase due main window", () => {
     expect(screen).toBe("focus-end");
     await $("[data-testid='front-notes']").setValue("e2e note");
     await $("[data-testid='front-start-break']").click();
-    await expect($("[data-testid='phase']")).toHaveText("短い休憩");
+    await expect($("[data-testid='popover']")).toHaveAttribute(
+      "data-tone",
+      "break",
+    );
   });
 });

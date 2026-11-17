@@ -38,14 +38,6 @@ export function Popover({
   const [editingTimes, setEditingTimes] = useState(false);
   const closeTimes = useCallback(() => setEditingTimes(false), []);
   const timer = appState.timer;
-  const phase =
-    timer.phase === "idle"
-      ? "待機中"
-      : timer.phase === "focus"
-        ? "集中"
-        : timer.kind === "short_break"
-          ? "短い休憩"
-          : "長い休憩";
   const time = view(timer, now);
   const accentHue = hueOf(appState.draft.category || null, categories, colors);
   const dialTime =
@@ -56,7 +48,12 @@ export function Popover({
   const edit = (field: "title" | "category" | "notes", value: string) =>
     dispatch({ type: "editDraft", [field]: value });
   return (
-    <main className="screen" data-tone={timer.phase} data-hue={accentHue}>
+    <main
+      className="screen"
+      data-testid="popover"
+      data-tone={timer.phase}
+      data-hue={accentHue}
+    >
       {confirming && (
         <ConfirmDialog
           name={confirming}
@@ -98,9 +95,6 @@ export function Popover({
         />
       )}
       <div className="topbar">
-        <div data-testid="phase" className="phase">
-          {phase}
-        </div>
         <CycleDots done={done} current={current} />
         <div className="pane-tools">
           <button

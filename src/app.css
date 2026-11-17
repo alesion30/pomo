@@ -90,7 +90,7 @@
   --accent: var(--leaf);
   --bg:
     radial-gradient(
-      260px 260px at 50% 284px,
+      260px 260px at 50% 264px,
       color-mix(in srgb, var(--leaf) 15%, transparent),
       transparent 72%
     ),
@@ -194,20 +194,6 @@ textarea {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   height: 28px;
-}
-
-.phase {
-  justify-self: start;
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 20px;
-  letter-spacing: 0.02em;
-  color: var(--text);
-}
-
-[data-tone="idle"] .phase {
-  color: var(--text-dim);
 }
 
 .pane-tools {
@@ -431,7 +417,8 @@ select.category-field:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 6px 0 8px;
+  /* 上の .intent はタイトル 3 行ぶんの空きを持つので、下にも余白を足して、1 行のときに文字盤がカテゴリと操作の間の中央に来るようにする。 */
+  padding: 6px 0 48px;
 }
 
 /* 高さが足りないときは文字盤だけが縮む。ほかの段は縮めない。 */

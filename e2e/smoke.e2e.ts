@@ -10,7 +10,10 @@ declare function it(title: string, fn: () => Promise<void>): void;
 describe("pomo boot", () => {
   it("shows the idle main window and exposes the tray title", async () => {
     execFileSync("scripts/pomoctl", ["tray-click"], { encoding: "utf8" });
-    assert((await browser.$("body").getText()).includes("待機中"));
+    assert.equal(
+      await browser.$('[data-testid="popover"]').getAttribute("data-tone"),
+      "idle",
+    );
     assert.equal(
       execFileSync("scripts/pomoctl", ["title"], { encoding: "utf8" }).trim(),
       "pomo",
