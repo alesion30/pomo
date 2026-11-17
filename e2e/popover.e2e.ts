@@ -11,18 +11,20 @@ describe("popover memo inputs", () => {
   it("saves focus notes with a category added in settings", async () => {
     execFileSync("scripts/pomoctl", ["tray-click"], { encoding: "utf8" });
     // 前の spec が集中や休憩を残していることがあるので、待機に戻してから始める。
-    const phase = browser.$('[data-testid="phase"]');
-    const current = await phase.getText();
-    if (current.endsWith("休憩")) {
+    const popover = browser.$('[data-testid="popover"]');
+    const current = await popover.getAttribute("data-tone");
+    if (current === "break") {
       await browser.$('[data-testid="discard-break"]').click();
       await browser.$('[data-testid="discard-break-confirm-ok"]').click();
-    } else if (current !== "待機中") {
+    } else if (current !== "idle") {
       await browser.$('[data-testid="end"]').click();
       await browser.$('[data-testid="end-confirm-ok"]').click();
     }
     const skip = browser.$('[data-testid="skip-break"]');
     if (await skip.isExisting()) await skip.click();
-    await browser.waitUntil(async () => (await phase.getText()) === "待機中");
+    await browser.waitUntil(
+      async () => (await popover.getAttribute("data-tone")) === "idle",
+    );
     const configDir = process.env.XDG_CONFIG_HOME;
     assert(configDir, "XDG_CONFIG_HOME must be set by the E2E runner");
     // 設定画面でカテゴリを足すと、config.json に書かれ、選択欄に出る。

@@ -40,7 +40,7 @@ describe("Main screen", () => {
     mock.now = 1_000;
     mock.state = initialState;
     const { rerender } = render(<Main />);
-    expect(screen.getByTestId("phase")).toBeTruthy();
+    expect(screen.getByTestId("popover")).toBeTruthy();
     mock.state = {
       ...initialState,
       timer: { phase: "idle", offer: "short_break" },
@@ -56,7 +56,9 @@ describe("Main screen", () => {
     };
     mock.now = 1_000;
     rerender(<Main />);
-    expect(screen.getByTestId("phase").textContent).toBe("集中");
+    expect(screen.getByTestId("popover").getAttribute("data-tone")).toBe(
+      "focus",
+    );
     mock.now = 100_000;
     rerender(<Main />);
     expect(screen.getByTestId("front-screen").getAttribute("data-screen")).toBe(
@@ -73,7 +75,9 @@ describe("Main screen", () => {
     };
     mock.now = 1_000;
     rerender(<Main />);
-    expect(screen.getByTestId("phase").textContent).toBe("短い休憩");
+    expect(screen.getByTestId("popover").getAttribute("data-tone")).toBe(
+      "break",
+    );
     mock.now = 100_000;
     rerender(<Main />);
     expect(screen.getByTestId("front-screen").getAttribute("data-screen")).toBe(
@@ -130,7 +134,7 @@ describe("Main screen", () => {
     rerender(<Main />);
     expect(screen.getByTestId("settings")).toBeTruthy();
     fireEvent.click(screen.getByTestId("settings-close"));
-    expect(screen.getByTestId("phase")).toBeTruthy();
+    expect(screen.getByTestId("popover")).toBeTruthy();
   });
   it("opens the history, lets a due screen take priority, and closes back to the timer", () => {
     mock.now = 1_000;
@@ -148,6 +152,6 @@ describe("Main screen", () => {
     rerender(<Main />);
     expect(screen.getByTestId("history")).toBeTruthy();
     fireEvent.click(screen.getByTestId("history-close"));
-    expect(screen.getByTestId("phase")).toBeTruthy();
+    expect(screen.getByTestId("popover")).toBeTruthy();
   });
 });
