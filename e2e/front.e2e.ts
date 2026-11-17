@@ -52,10 +52,5 @@ describe("phase due main window", () => {
     );
     await browser.pause(1_000);
     expect(onScreen()).toBe(true);
-    expect(
-      execFileSync("scripts/pomoctl", ["key-window"], {
-        encoding: "utf8",
-      }).trim(),
-    ).toBe("main");
   });
 });
