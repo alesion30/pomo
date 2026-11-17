@@ -34,11 +34,11 @@ pnpm tauri dev
 デバッグ版をビルドしてから、E2E テストを動かします。E2E はセッションの記録と `config.json` を書き換えるので、`XDG_DATA_HOME` と `XDG_CONFIG_HOME` に使い捨てのディレクトリを渡します。区切りや超過を待つ spec があるので、`POMO_TIME_SCALE=60` で時間を 60 倍に縮めます（25 分の集中が 25 秒になります）。
 
 ```sh
-pnpm tauri build --debug --no-bundle
+pnpm tauri build --debug --no-bundle --config '{"identifier":"dev.alesion30.pomo.e2e"}'
 POMO_TIME_SCALE=60 XDG_DATA_HOME=/tmp/pomo-e2e/data XDG_CONFIG_HOME=/tmp/pomo-e2e/config pnpm e2e
 ```
 
-pomo は二重に起動しないので、インストールした pomo が動いているとデバッグ版はすぐに終了し、E2E が始まりません。先に終了しておいてください。
+ビルドでは identifier を `dev.alesion30.pomo.e2e` に差し替えます。pomo は二重に起動せず、macOS では identifier から決まる `/tmp` のソケットで起動済みかを判定します。identifier が同じままだと、インストールした pomo が動いているときにデバッグ版がすぐに終了し、E2E が始まりません。identifier を変えれば、インストールした pomo を動かしたまま E2E を走らせられます。
 
 デバッグ版だけが `<データディレクトリ>/debug.sock` に制御ソケットを開きます。`scripts/pomoctl tray-click`、`scripts/pomoctl title`、`scripts/pomoctl key-window`、`scripts/pomoctl key-quit`、`scripts/pomoctl close` で、トレイのクリック、メニューバーの文字列、キーウィンドウ、メニュー経由の ⌘Q、赤ボタンでの閉じる操作を扱えます。macOS のソケットのパスは 104 バイトまでなので、`XDG_DATA_HOME` には短いパスを使ってください。
 
