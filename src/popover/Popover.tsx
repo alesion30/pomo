@@ -1,6 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { durations } from "../domain/constants";
 import { type AppState, type Command, view } from "../domain/timer";
@@ -12,7 +10,6 @@ import { Dial } from "../ui/Dial";
 import { TitleField } from "../ui/TitleField";
 import { formatClock } from "./clockTime";
 import { TimeEditDialog, TimeRange } from "./TimeRange";
-import { UpdateButton } from "./UpdateButton";
 import { WrapUpSheet } from "./WrapUpSheet";
 
 export function Popover({
@@ -34,9 +31,6 @@ export function Popover({
   onOpenSettings(): void;
   onOpenHistory(): void;
 }) {
-  const [updateVersion, setUpdateVersion] = useState<string | null>(null);
-  const [updateError, setUpdateError] = useState<string | null>(null);
-  const [applying, setApplying] = useState(false);
   const [confirming, setConfirming] = useState<keyof typeof confirms | null>(
     null,
   );
@@ -59,35 +53,6 @@ export function Popover({
       ? { remainingSec: durations(scale).focus, overtimeSec: 0 }
       : time;
   const { done, current } = cycleProgress(appState, now, scale);
-  const refreshUpdate = useCallback(() => {
-    void invoke<string | null>("update_status")
-      .then(setUpdateVersion)
-      .catch(console.error);
-  }, []);
-  const applyUpdate = useCallback(() => {
-    setUpdateError(null);
-    setApplying(true);
-    void invoke<void>("apply_update").catch((error: unknown) => {
-      setApplying(false);
-      setUpdateError(String(error));
-    });
-  }, []);
-  useEffect(() => {
-    refreshUpdate();
-    const refresh = () => {
-      if (document.visibilityState === "visible") refreshUpdate();
-    };
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
-    const unlisten = listen<string>("update-available", (event) =>
-      setUpdateVersion(event.payload),
-    );
-    return () => {
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
-      void unlisten.then((off) => off());
-    };
-  }, [refreshUpdate]);
   const edit = (field: "title" | "category" | "notes", value: string) =>
     dispatch({ type: "editDraft", [field]: value });
   return (
@@ -295,17 +260,6 @@ export function Popover({
           </button>
         )}
       </div>
-      <UpdateButton
-        version={updateVersion}
-        phase={timer.phase}
-        applying={applying}
-        onApply={applyUpdate}
-      />
-      {updateError && (
-        <p role="alert" className="alert update-error">
-          更新に失敗しました: {updateError}
-        </p>
-      )}
     </main>
   );
 }
