@@ -97,7 +97,6 @@ export function transition(
             state.streak.completed >= LONG_EVERY ? "long_break" : "short_break",
         }
       : { phase: "idle" };
-    state.draft.title = "";
     state.draft.notes = "";
   }
   if (command.type === "startBreak" && state.timer.phase === "focus") {

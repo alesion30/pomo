@@ -43,6 +43,10 @@ describe("timer", () => {
           .$('[data-testid="popover"]')
           .getAttribute("data-tone")) === "idle",
     );
+    assert.equal(
+      await browser.$('[data-testid="title-input"]').getValue(),
+      "E2E task",
+    );
   });
   it("starts a break immediately from focus", async () => {
     execFileSync("scripts/pomoctl", ["tray-click"]);

@@ -138,6 +138,16 @@ describe("draft and time scale", () => {
     const { state } = transition(initialState, { type: "startFocus" }, 0, 7);
     expect(state.timer).toMatchObject({ phase: "focus", plannedSec: 214 });
   });
+  it("keeps title and category for the next focus after endFocus, and clears notes", () => {
+    let app = transition(
+      initialState,
+      { type: "editDraft", title: "Task", category: "Work", notes: "note" },
+      0,
+    ).state;
+    app = transition(app, { type: "startFocus" }, 0).state;
+    const { state } = transition(app, { type: "endFocus" }, 1_000);
+    expect(state.draft).toEqual({ title: "Task", category: "Work", notes: "" });
+  });
   it("records an empty focus title as an empty string", () => {
     const app = transition(initialState, { type: "startFocus" }, 0).state;
     const { record } = transition(app, { type: "endFocus" }, 1_000);
