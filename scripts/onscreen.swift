@@ -9,6 +9,7 @@ let windows = (CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) 
         return [
             "name": window[kCGWindowName as String] as? String ?? "",
             "layer": window[kCGWindowLayer as String] as? Int ?? 0,
+            "pid": window[kCGWindowOwnerPID as String] as? Int ?? 0,
             "bounds": ["x": bounds["X"] ?? 0, "y": bounds["Y"] ?? 0, "width": bounds["Width"] ?? 0, "height": bounds["Height"] ?? 0]
         ]
     }

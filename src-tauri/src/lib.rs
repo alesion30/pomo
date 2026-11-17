@@ -105,7 +105,7 @@ fn quit_app<R: Runtime>(app: tauri::AppHandle<R>) {
 
 fn quit<R: Runtime>(app: &tauri::AppHandle<R>) {
     // window-state は終了時の位置を保存する。区切りで中央に寄せたままだとその位置が残るので、先に元へ戻す。
-    panel::end_due(app.clone());
+    panel::leave_due(app, panel::Exit::Close);
     app.exit(0);
 }
 
@@ -166,7 +166,7 @@ pub fn run() {
             {
                 api.prevent_close();
                 // 区切りの画面のまま閉じても、最前面と全スペースの設定を残さない。
-                panel::end_due(window.app_handle().clone());
+                panel::leave_due(window.app_handle(), panel::Exit::Close);
                 let _ = window.hide();
             }
         })
