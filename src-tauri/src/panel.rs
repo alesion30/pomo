@@ -13,7 +13,32 @@ pub struct DuePresentation {
 pub struct Restore {
     // 区切りではマウスのある画面へ動かす。倍率の違う画面へ移ると物理座標では元の位置に戻らないので、論理座標で持つ。
     pub position: LogicalPosition<f64>,
-    pub was_visible: bool,
+    pub prior: Prior,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Prior {
+    Shown,
+    Hidden,
+    // 別のスペースにあって見えていなかった。全画面アプリで作業していたことが多い。
+    OtherSpace,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Exit {
+    Action,
+    // 閉じるか、アプリを終了した。
+    Close,
+}
+
+// 閉じていたウィンドウも、ボタンで抜けた後は出したままにする。タイマーの続きを見られるようにするため。
+// 別のスペースにあった時は隠す。出したまま全スペースの設定を外すと、全画面アプリからウィンドウのあるスペースへ切り替わる（実機で確かめた）。
+pub fn hides(prior: Prior, exit: Exit) -> bool {
+    match prior {
+        Prior::Shown => false,
+        Prior::Hidden => exit == Exit::Close,
+        Prior::OtherSpace => true,
+    }
 }
 
 pub fn record(state: &mut DuePresentation, restore: Restore) {
@@ -44,7 +69,7 @@ pub fn present_due<R: tauri::Runtime>(app: &AppHandle<R>) {
             &mut state.lock().unwrap(),
             Restore {
                 position: position.to_logical(scale),
-                was_visible: visible,
+                prior: if visible { Prior::Shown } else { Prior::Hidden },
             },
         );
     }
@@ -54,8 +79,7 @@ pub fn present_due<R: tauri::Runtime>(app: &AppHandle<R>) {
         if let (Some(mtm), Ok(ptr)) = (objc2::MainThreadMarker::new(), window.ns_window()) {
             let ns_window = unsafe { &*(ptr as *const NSWindow) };
             let ns_app = NSApplication::sharedApplication(mtm);
-            // 別のスペースにあって見えていなかったウィンドウは、閉じていたのと同じに扱う。
-            // 表示に戻すと、区切りを抜けた時に全画面アプリからそのスペースへ切り替わってしまう（実機で確かめた）。
+            // 閉じていたウィンドウは別のスペースとみなさない。ボタンで抜けた後に出したままにするため。
             if !ns_window.isOnActiveSpace()
                 && let Some(restore) = handle
                     .state::<Mutex<DuePresentation>>()
@@ -63,8 +87,9 @@ pub fn present_due<R: tauri::Runtime>(app: &AppHandle<R>) {
                     .unwrap()
                     .restore
                     .as_mut()
+                && restore.prior == Prior::Shown
             {
-                restore.was_visible = false;
+                restore.prior = Prior::OtherSpace;
             }
             // Dock に出るアプリのウィンドウは、他のアプリの全画面スペースの上に出せない（実機で確かめた）。
             // 前に出している間だけ Dock に出ないアプリにする。Tauri 経由では前面化より後に反映され、
@@ -90,20 +115,23 @@ pub fn present_due<R: tauri::Runtime>(app: &AppHandle<R>) {
 
 #[tauri::command]
 pub fn end_due<R: tauri::Runtime>(app: AppHandle<R>) {
+    leave_due(&app, Exit::Action);
+}
+
+pub fn leave_due<R: tauri::Runtime>(app: &AppHandle<R>, exit: Exit) {
     let Some(window) = app.get_webview_window("main") else {
         return;
     };
     let restore = take_restore(&mut app.state::<Mutex<DuePresentation>>().lock().unwrap());
     let Some(restore) = restore else { return };
+    let hide = hides(restore.prior, exit);
     let _ = app.run_on_main_thread(move || {
         #[cfg(target_os = "macos")]
         if let Ok(ptr) = window.ns_window() {
             let ns_window = unsafe { &*(ptr as *const NSWindow) };
             // 全スペースの設定を外す前に隠す。前面のまま外すと、全画面アプリからウィンドウのあるスペースへ切り替わる（実機で確かめた）。
             // Tauri の hide は後から実行されるので、AppKit を直接呼ぶ。
-            if !restore.was_visible
-                && let Some(mtm) = objc2::MainThreadMarker::new()
-            {
+            if hide && let Some(mtm) = objc2::MainThreadMarker::new() {
                 ns_window.orderOut(None);
                 NSApplication::sharedApplication(mtm).hide(None);
             }
@@ -117,7 +145,7 @@ pub fn end_due<R: tauri::Runtime>(app: AppHandle<R>) {
         }
         let _ = window.set_position(tauri::Position::Logical(restore.position));
         #[cfg(not(target_os = "macos"))]
-        if !restore.was_visible {
+        if hide {
             let _ = window.hide();
         }
     });
@@ -167,11 +195,11 @@ mod tests {
     fn due_restore_is_first_write_and_take_once() {
         let first = Restore {
             position: LogicalPosition::new(1.0, 2.0),
-            was_visible: false,
+            prior: Prior::Hidden,
         };
         let second = Restore {
             position: LogicalPosition::new(3.0, 4.0),
-            was_visible: true,
+            prior: Prior::Shown,
         };
         let mut state = DuePresentation::default();
         record(&mut state, first);
