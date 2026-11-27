@@ -186,7 +186,8 @@ pub fn delete_record(
     store.rewrite(&id, None)?;
     app.emit("records-changed", ()).map_err(|e| e.to_string())
 }
-#[tauri::command]
+// 打鍵のたびに呼ばれ、fsync で数 ms かかる。同期のコマンドはメインスレッドで動き、その間キー入力の処理が止まるので、別スレッドで動かす。
+#[tauri::command(async)]
 pub fn save_state(
     app: AppHandle,
     store: tauri::State<'_, StateStore>,
